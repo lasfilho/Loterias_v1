@@ -89,6 +89,26 @@ export async function compareStrategiesApi(
   return handleResponse(res);
 }
 
+export async function runBacktestApi(
+  game: GameSlug,
+  body: Record<string, unknown>
+) {
+  const res = await fetch(`/api/games/${game}/backtest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return handleResponse<{
+    report: import("@/modules/shared/backtest/types").BacktestReport;
+    runId?: string;
+  }>(res);
+}
+
+export async function fetchBacktestHistory(game: GameSlug) {
+  const res = await fetch(`/api/games/${game}/backtest`, { cache: "no-store" });
+  return handleResponse<{ runs: Array<Record<string, unknown>> }>(res);
+}
+
 export async function fetchPredictionHistory(game: GameSlug, limit = 10) {
   const res = await fetch(
     `/api/games/${game}/predictions/history?limit=${limit}`,

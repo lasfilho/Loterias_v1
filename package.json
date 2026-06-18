@@ -24,7 +24,8 @@
     "etl:incremental": "tsx scripts/etl/incremental-sync.ts all",
     "etl:reprocess": "tsx scripts/etl/reprocess.ts",
     "analytics:run": "tsx scripts/analytics/run.ts",
-    "predictions:generate": "tsx scripts/predictions/generate.ts"
+    "predictions:generate": "tsx scripts/predictions/generate.ts",
+    "backtest:run": "tsx scripts/backtest/run.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",

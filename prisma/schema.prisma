@@ -76,6 +76,13 @@ enum PredictionStrategy {
   HYBRID
 }
 
+enum BacktestStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
 // ─── Compartilhado: fontes e ingestão ────────────────────────
 
 /// Fonte oficial ou alternativa de dados (API Caixa, CSV, manual)
@@ -262,6 +269,84 @@ model AppSettings {
   updatedAt DateTime @updatedAt
 
   @@map("app_settings")
+}
+
+// ─── Backtest de estratégias ─────────────────────────────────
+
+/// Execução walk-forward de backtest retrospectivo
+model BacktestRun {
+  id               String         @id @default(cuid())
+  gameType         GameType
+  status           BacktestStatus @default(PENDING)
+  triggeredBy      String         @default("api")
+  mode             String         @default("BALANCED")
+  fromContest      Int?
+  toContest        Int?
+  windowSize       Int            @default(50)
+  trainMinDraws    Int            @default(80)
+  persistDetails   Boolean        @default(false)
+  strategiesTested String[]
+  contestsTested   Int            @default(0)
+  disclaimer       String
+  startedAt        DateTime       @default(now())
+  finishedAt       DateTime?
+  errorMessage     String?
+  metadata         Json?
+
+  strategyResults BacktestStrategyResult[]
+  contestResults  BacktestContestResult[]
+
+  @@index([gameType, startedAt(sort: Desc)])
+  @@index([status])
+  @@map("backtest_runs")
+}
+
+/// Resultado agregado por estratégia em um backtest
+model BacktestStrategyResult {
+  id                   String   @id @default(cuid())
+  backtestRunId        String
+  strategy             String
+  strategyDetail       String?
+  rank                 Int?
+  contestsTested       Int
+  meanHits             Float
+  medianHits           Float
+  stdDevHits           Float
+  maxHits              Int
+  minHits              Int
+  hitRateByLevel       Json
+  hitBandRates         Json
+  partialHitRate       Float
+  partialHitThreshold  Int
+  partialStreakStats   Json
+  scoreCorrelation     Float?
+  meanPredictedScore   Float?
+  periodAggregates     Json?
+  metadata             Json?
+
+  backtestRun BacktestRun @relation(fields: [backtestRunId], references: [id], onDelete: Cascade)
+
+  @@index([backtestRunId])
+  @@index([backtestRunId, rank])
+  @@map("backtest_strategy_results")
+}
+
+/// Detalhe por concurso (opcional, quando persistDetails=true)
+model BacktestContestResult {
+  id               String   @id @default(cuid())
+  backtestRunId    String
+  strategy         String
+  contestNumber    Int
+  predictedNumbers Int[]
+  actualNumbers    Int[]
+  hits             Int
+  predictedScore   Float?
+
+  backtestRun BacktestRun @relation(fields: [backtestRunId], references: [id], onDelete: Cascade)
+
+  @@index([backtestRunId, strategy])
+  @@index([backtestRunId, contestNumber])
+  @@map("backtest_contest_results")
 }
 
 // ─── Lotofácil (15 dezenas, universo 1–25) ───────────────────

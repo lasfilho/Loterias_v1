@@ -11,6 +11,7 @@ import {
   History,
   LineChart,
   Menu,
+  FlaskConical,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -22,6 +23,7 @@ const mainNav = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Importação", href: "/importacao", icon: Database },
   { name: "Análises", href: "/analises", icon: LineChart },
+  { name: "Backtest", href: "/backtest", icon: FlaskConical },
   { name: "Palpites", href: "/palpites", icon: Sparkles },
   { name: "Histórico", href: "/historico", icon: History },
   { name: "Configurações", href: "/configuracoes", icon: Settings },

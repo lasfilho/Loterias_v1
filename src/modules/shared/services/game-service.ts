@@ -17,6 +17,12 @@ import type {
   GenerationRequest,
   GenerationResult,
 } from "../prediction/types";
+import {
+  runBacktestPipeline,
+  listBacktestRuns,
+  getBacktestRun,
+} from "../backtest/backtest-pipeline.service";
+import type { BacktestRequest } from "../backtest/types";
 
 export { resolveRepository as getRepository };
 
@@ -311,4 +317,21 @@ export async function getSyncLogs(limit = 10) {
     take: limit,
     include: { dataSource: { select: { code: true, name: true } } },
   });
+}
+
+export async function runBacktest(
+  slug: GameSlug,
+  request: BacktestRequest = {}
+) {
+  if (!isGameSlug(slug)) throw new Error(`Invalid game: ${slug}`);
+  return runBacktestPipeline(slug, request);
+}
+
+export async function getBacktestHistory(slug: GameSlug, limit = 20) {
+  if (!isGameSlug(slug)) throw new Error(`Invalid game: ${slug}`);
+  return listBacktestRuns(slug, limit);
+}
+
+export async function getBacktestById(id: string) {
+  return getBacktestRun(id);
 }

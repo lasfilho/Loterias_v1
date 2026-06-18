@@ -5,12 +5,11 @@ import {
   Activity,
   BarChart2,
   Calendar,
-  Flame,
+  FlaskConical,
   Hash,
   Layers,
+  Loader2,
   Sparkles,
-  Target,
-  TrendingUp,
 } from "lucide-react";
 import type { GameSlug } from "@/modules/shared/constants";
 import { GAMES } from "@/modules/shared/constants";
@@ -56,6 +55,13 @@ import {
   generatePredictionApi,
 } from "@/lib/api-client";
 import type { DrawRow } from "@/types/dashboard";
+import Link from "next/link";
+import { runBacktestApi } from "@/lib/api-client";
+import type { BacktestReport } from "@/modules/shared/backtest/types";
+import {
+  StrategyRankingChart,
+  ScoreCorrelationChart,
+} from "@/components/charts/backtest-charts";
 import { TrendBadge } from "@/components/dashboard/trend-badge";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 
@@ -148,7 +154,7 @@ export function GameDashboardView({ slug }: GameDashboardViewProps) {
                 <PredictionsTab slug={slug} color={rules.color} />
               </TabsContent>
               <TabsContent value="backtest">
-                <BacktestTab analytics={analytics!} color={rules.color} />
+                <BacktestTab slug={slug} color={rules.color} />
               </TabsContent>
             </Tabs>
           )}
@@ -641,132 +647,118 @@ function PredictionsTab({
 }
 
 function BacktestTab({
-  analytics,
+  slug,
   color,
 }: {
-  analytics: FullAnalyticsReport;
+  slug: GameSlug;
   color: string;
 }) {
-  const backtest = analytics.advanced.backtest;
-  const monteCarlo = analytics.advanced.monteCarlo;
+  const [loading, setLoading] = useState(false);
+  const [report, setReport] = useState<BacktestReport | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!backtest) {
-    return (
-      <EmptyState
-        title="Backtest indisponível"
-        description="São necessários mais concursos na amostra para executar o backtest retrospectivo."
-        icon="chart"
-      />
-    );
-  }
+  const run = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await runBacktestApi(slug, {
+        windowSize: 40,
+        trainMinDraws: 80,
+        mode: "BALANCED",
+      });
+      setReport(data.report);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro no backtest");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
-      <SectionShell
-        title="Backtest de estratégias"
-        description={backtest.note}
-      >
-        <DataTable
-          columns={[
-            {
-              key: "strategy",
-              header: "Estratégia",
-              render: (r) => (
-                <span className="font-medium">{r.strategy}</span>
-              ),
-            },
-            {
-              key: "contests",
-              header: "Concursos",
-              render: (r) => r.contestsTested,
-            },
-            {
-              key: "mean",
-              header: "Média acertos",
-              render: (r) => r.meanHits.toFixed(2),
-            },
-            {
-              key: "best",
-              header: "Melhor nível",
-              render: (r) => {
-                const entries = Object.entries(r.hitRateByLevel);
-                const best = entries.sort((a, b) => b[1] - a[1])[0];
-                return best ? `${best[0]}: ${(best[1] * 100).toFixed(1)}%` : "—";
+      <InfoBlock variant="accent">
+        Backtest walk-forward: cada palpite usa apenas concursos anteriores.
+        Não comprova capacidade preditiva futura.
+      </InfoBlock>
+
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={run} disabled={loading} style={{ background: color }}>
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <FlaskConical className="h-4 w-4 mr-2" />
+          )}
+          Executar backtest rápido
+        </Button>
+        <Link href={`/backtest?game=${slug}`}>
+          <Button variant="outline">Backtest completo</Button>
+        </Link>
+      </div>
+
+      {error && <ErrorState message={error} onRetry={run} />}
+
+      {report && (
+        <>
+          <DataTable
+            columns={[
+              {
+                key: "rank",
+                header: "#",
+                render: (r) => r.rank,
+                className: "w-10",
               },
-            },
-          ]}
-          data={[backtest.baselineRandom, ...backtest.strategies]}
-          keyExtractor={(r) => r.strategy}
-        />
-      </SectionShell>
+              {
+                key: "strategy",
+                header: "Estratégia",
+                render: (r) =>
+                  GENERATION_STRATEGIES.find((s) => s.value === r.strategy)
+                    ?.label ?? r.strategy,
+              },
+              {
+                key: "mean",
+                header: "Média acertos",
+                render: (r) => r.meanHits.toFixed(3),
+              },
+              {
+                key: "partial",
+                header: "Acertos parciais",
+                render: (r) =>
+                  `${r.partialHitRate.toFixed(1)}% (≥${r.partialHitThreshold})`,
+              },
+              {
+                key: "corr",
+                header: "Score×Acertos",
+                render: (r) =>
+                  r.scoreCorrelation?.toFixed(3) ?? "—",
+              },
+            ]}
+            data={[
+              ...report.ranking,
+              ...(report.baselineRandom ? [report.baselineRandom] : []),
+            ]}
+            keyExtractor={(r) => r.strategy}
+          />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <StrategyRankingChart strategies={report.ranking} color={color} />
+            <ScoreCorrelationChart
+              strategies={[
+                ...report.ranking,
+                ...(report.baselineRandom ? [report.baselineRandom] : []),
+              ]}
+            />
+          </div>
+        </>
+      )}
 
-      <SectionShell title="Monte Carlo" description={monteCarlo.note}>
-        <div className="grid gap-4 sm:grid-cols-3 mb-6">
-          <KpiCard
-            title="Simulações"
-            value={monteCarlo.simulations.toLocaleString("pt-BR")}
-            icon={<Target className="h-4 w-4" />}
-            accent={color}
-          />
-          <KpiCard
-            title="Média de acertos"
-            value={monteCarlo.meanHits.toFixed(2)}
-            icon={<TrendingUp className="h-4 w-4" />}
-            accent={color}
-          />
-          <KpiCard
-            title="Dezenas por jogo"
-            value={monteCarlo.pickCount}
-            icon={<Flame className="h-4 w-4" />}
-            accent={color}
-          />
-        </div>
-        <DataTable
-          columns={[
-            { key: "label", header: "Acertos", render: (r) => r.label },
-            { key: "count", header: "Freq.", render: (r) => r.count },
-            { key: "pct", header: "%", render: (r) => `${r.percentage.toFixed(1)}%` },
-          ]}
-          data={monteCarlo.hitDistribution}
-          keyExtractor={(r) => r.label}
+      {!report && !loading && !error && (
+        <EmptyState
+          title="Backtest não executado"
+          description="Clique em Executar para comparar estratégias no histórico desta modalidade."
+          icon="chart"
+          actionLabel="Executar backtest rápido"
+          onAction={run}
         />
-      </SectionShell>
-
-      <SectionShell title="Ranking probabilístico (top 10)">
-        <DataTable
-          columns={[
-            {
-              key: "rank",
-              header: "#",
-              render: (r) => r.rank,
-              className: "w-12",
-            },
-            {
-              key: "num",
-              header: "Dezena",
-              render: (r) => (
-                <span className="font-mono">
-                  {String(r.number).padStart(2, "0")}
-                </span>
-              ),
-            },
-            {
-              key: "weight",
-              header: "Peso heurístico",
-              render: (r) => r.heuristicWeight.toFixed(3),
-            },
-            {
-              key: "note",
-              header: "Nota",
-              render: (r) => (
-                <span className="text-xs text-muted-foreground">{r.note}</span>
-              ),
-            },
-          ]}
-          data={analytics.advanced.probabilisticRanking.slice(0, 10)}
-          keyExtractor={(r) => String(r.number)}
-        />
-      </SectionShell>
+      )}
     </div>
   );
 }
