@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-chart-grid: var(--chart-grid);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: #f8f9fc;
+  --foreground: #0f1117;
+  --card: #ffffff;
+  --card-foreground: #0f1117;
+  --muted: #eef0f6;
+  --muted-foreground: #5c6370;
+  --border: #e2e5ee;
+  --primary: #5b4cdb;
+  --primary-foreground: #ffffff;
+  --accent: #f0f1f8;
+  --accent-foreground: #0f1117;
+  --destructive: #dc2626;
+  --ring: #5b4cdb;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --chart-grid: #e8ebf2;
+  --success: #059669;
+  --warning: #d97706;
+  --radius: 0.625rem;
+}
+
+.dark {
+  --background: #07080d;
+  --foreground: #eceef4;
+  --card: #0e1018;
+  --card-foreground: #eceef4;
+  --muted: #151822;
+  --muted-foreground: #8b92a5;
+  --border: #1f2433;
+  --primary: #7c6df0;
+  --primary-foreground: #ffffff;
+  --accent: #161a28;
+  --accent-foreground: #eceef4;
+  --destructive: #f87171;
+  --ring: #7c6df0;
+  --surface: #0c0e15;
+  --surface-elevated: #12151f;
+  --chart-grid: #1a1f2e;
+  --success: #34d399;
+  --warning: #fbbf24;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+.gradient-mesh {
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -30%, color-mix(in srgb, var(--primary) 12%, transparent), transparent),
+    radial-gradient(ellipse 50% 40% at 100% 0%, color-mix(in srgb, #3b82f6 8%, transparent), transparent),
+    radial-gradient(ellipse 40% 30% at 0% 100%, color-mix(in srgb, var(--success) 6%, transparent), transparent),
+    var(--background);
+}
+
+.glass {
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--foreground) 4%, transparent),
+    0 8px 32px color-mix(in srgb, var(--foreground) 3%, transparent);
+}
+
+.dark .glass {
+  background: color-mix(in srgb, var(--card) 75%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+.surface-panel {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.dashboard-grid-bg {
+  background-image:
+    linear-gradient(var(--chart-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--chart-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: center top;
+}
+
+.number-ball {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.number-ball-sm {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.65rem;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.section-anchor {
+  scroll-margin-top: 6rem;
+}

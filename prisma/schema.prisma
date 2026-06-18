@@ -1,0 +1,412 @@
+// Loteria Analytics — Modelagem de dados
+// Separação lógica por modalidade (draws/predictions por jogo)
+// Tabelas compartilhadas para ingestão, análises, snapshots e configuração
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────
+
+enum GameType {
+  LOTOFACIL
+  MEGASENA
+  QUINA
+}
+
+enum DataSourceType {
+  CAIXA_API
+  CSV_FILE
+  MANUAL_ENTRY
+  LEGACY_IMPORT
+}
+
+enum ImportStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum AnalysisType {
+  FULL_HISTORY
+  INCREMENTAL
+  FILTERED_RANGE
+  SCHEDULED
+  ON_DEMAND
+}
+
+enum AnalysisStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  STALE
+}
+
+enum SnapshotType {
+  SUMMARY
+  FREQUENCY
+  DELAY
+  PAIRS
+  PARITY
+  RANGES
+  TRENDS
+  COOCCURRENCE
+}
+
+enum TrendDirection {
+  UP
+  DOWN
+  STABLE
+}
+
+enum PredictionStrategy {
+  FREQUENCY_WEIGHTED
+  DELAY_BALANCED
+  HOT_COLD_MIX
+  PATTERN_AWARE
+  HYBRID
+}
+
+// ─── Compartilhado: fontes e ingestão ────────────────────────
+
+/// Fonte oficial ou alternativa de dados (API Caixa, CSV, manual)
+model DataSource {
+  id        String         @id @default(cuid())
+  code      String         @unique
+  name      String
+  type      DataSourceType
+  baseUrl   String?
+  isActive  Boolean        @default(true)
+  config    Json?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  importBatches ImportBatch[]
+  drawsLotofacil LotofacilDraw[]
+  drawsMegasena  MegasenaDraw[]
+  drawsQuina     QuinaDraw[]
+
+  @@map("data_sources")
+}
+
+/// Lote/execução de importação — rastreabilidade ponta a ponta
+model ImportBatch {
+  id                    String       @id @default(cuid())
+  gameType              GameType
+  dataSourceId          String
+  status                ImportStatus @default(PENDING)
+  triggeredBy           String       @default("system")
+  startedAt             DateTime     @default(now())
+  finishedAt            DateTime?
+  fromContest           Int?
+  toContest             Int?
+  lastContestProcessed  Int?
+  contestsAdded         Int          @default(0)
+  contestsUpdated       Int          @default(0)
+  contestsSkipped       Int          @default(0)
+  contestsFailed        Int          @default(0)
+  contestsTotal         Int          @default(0)
+  fileName              String?
+  fileHash              String?
+  errorMessage          String?
+  metadata              Json?
+
+  dataSource   DataSource    @relation(fields: [dataSourceId], references: [id])
+  analysisRuns AnalysisRun[]
+  drawsLotofacil LotofacilDraw[]
+  drawsMegasena  MegasenaDraw[]
+  drawsQuina     QuinaDraw[]
+
+  @@index([gameType, startedAt(sort: Desc)])
+  @@index([dataSourceId])
+  @@index([status])
+  @@map("import_batches")
+}
+
+// ─── Compartilhado: análises e snapshots ─────────────────────
+
+/// Execução de um pipeline analítico (versionável)
+model AnalysisRun {
+  id               String         @id @default(cuid())
+  gameType         GameType
+  analysisType     AnalysisType   @default(FULL_HISTORY)
+  status           AnalysisStatus @default(PENDING)
+  version          Int            @default(1)
+  engineVersion    String?
+  isLatest         Boolean        @default(true)
+  parentRunId      String?
+  importBatchId    String?
+  triggeredBy      String         @default("system")
+  filterConfig     Json?
+  drawsFromContest Int?
+  drawsToContest   Int?
+  drawsAnalyzed    Int            @default(0)
+  startedAt        DateTime       @default(now())
+  finishedAt       DateTime?
+  errorMessage     String?
+  metadata         Json?
+
+  parentRun      AnalysisRun?        @relation("AnalysisRunVersions", fields: [parentRunId], references: [id])
+  childRuns      AnalysisRun[]       @relation("AnalysisRunVersions")
+  importBatch    ImportBatch?        @relation(fields: [importBatchId], references: [id])
+  snapshots      IndicatorSnapshot[]
+  numberStats    NumberIndicator[]
+  predictionsLotofacil LotofacilPrediction[]
+  predictionsMegasena  MegasenaPrediction[]
+  predictionsQuina     QuinaPrediction[]
+
+  @@index([gameType, isLatest])
+  @@index([gameType, startedAt(sort: Desc)])
+  @@index([importBatchId])
+  @@index([status])
+  @@map("analysis_runs")
+}
+
+/// Snapshot de indicadores agregados (JSON por tipo de métrica)
+model IndicatorSnapshot {
+  id             String       @id @default(cuid())
+  analysisRunId  String
+  gameType       GameType
+  snapshotType   SnapshotType
+  filterHash     String       @default("all")
+  filterConfig   Json?
+  version        Int          @default(1)
+  isCurrent      Boolean      @default(true)
+  data           Json
+  computedAt     DateTime     @default(now())
+  validUntil     DateTime?
+
+  analysisRun AnalysisRun @relation(fields: [analysisRunId], references: [id], onDelete: Cascade)
+
+  @@unique([analysisRunId, snapshotType, filterHash])
+  @@index([gameType, snapshotType, isCurrent])
+  @@index([gameType, filterHash, snapshotType])
+  @@map("indicator_snapshots")
+}
+
+/// Estatísticas pré-calculadas por dezena (consultas rápidas de dashboard)
+model NumberIndicator {
+  id                String         @id @default(cuid())
+  analysisRunId     String
+  gameType          GameType
+  number            Int
+  frequencyCount    Int            @default(0)
+  frequencyPct      Float          @default(0)
+  expectedFrequency Float          @default(0)
+  deviation         Float          @default(0)
+  delay             Int            @default(0)
+  lastContest       Int?
+  avgDelay          Float          @default(0)
+  trend             TrendDirection @default(STABLE)
+  recentCount       Int            @default(0)
+  computedAt        DateTime       @default(now())
+
+  analysisRun AnalysisRun @relation(fields: [analysisRunId], references: [id], onDelete: Cascade)
+
+  @@unique([analysisRunId, number])
+  @@index([gameType, analysisRunId, frequencyCount(sort: Desc)])
+  @@index([gameType, analysisRunId, delay(sort: Desc)])
+  @@index([gameType, number])
+  @@map("number_indicators")
+}
+
+// ─── Compartilhado: configuração ─────────────────────────────
+
+/// Perfis de geração de palpites por modalidade
+model PredictionConfig {
+  id               String             @id @default(cuid())
+  gameType         GameType
+  name             String
+  slug             String
+  strategy         PredictionStrategy @default(HYBRID)
+  strategyWeights  Json               @default("{}")
+  constraints      Json               @default("{}")
+  isDefault        Boolean            @default(false)
+  isActive         Boolean            @default(true)
+  description      String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  predictionsLotofacil LotofacilPrediction[]
+  predictionsMegasena  MegasenaPrediction[]
+  predictionsQuina     QuinaPrediction[]
+
+  @@unique([gameType, slug])
+  @@index([gameType, isDefault])
+  @@map("prediction_configs")
+}
+
+/// Configurações por modalidade (dashboards, janelas, preferências)
+model GameSettings {
+  id        String   @id @default(cuid())
+  gameType  GameType @unique
+  settings  Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  @@map("game_settings")
+}
+
+/// Configurações globais da aplicação
+model AppSettings {
+  id        String   @id @default("default")
+  settings  Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
+// ─── Lotofácil (15 dezenas, universo 1–25) ───────────────────
+
+model LotofacilDraw {
+  id              String   @id @default(cuid())
+  contestNumber   Int      @unique
+  drawDate        DateTime
+  numbers         Int[]
+  accumulated     Boolean  @default(false)
+  prizePool       Float?
+  winnersCount    Int?
+  nextEstimate    Float?
+  dataSourceId    String?
+  importBatchId   String?
+  rawPayload      Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  dataSource  DataSource?  @relation(fields: [dataSourceId], references: [id])
+  importBatch ImportBatch? @relation(fields: [importBatchId], references: [id])
+
+  @@index([drawDate(sort: Desc)])
+  @@index([importBatchId])
+  @@index([contestNumber(sort: Desc)])
+  @@map("lotofacil_draws")
+}
+
+model LotofacilPrediction {
+  id              String             @id @default(cuid())
+  numbers         Int[]
+  strategy        PredictionStrategy
+  confidence      Float?
+  configId        String?
+  analysisRunId   String?
+  basedOnContestFrom Int?
+  basedOnContestTo   Int?
+  filterConfig    Json?
+  metadata        Json?
+  notes           String?
+  createdAt       DateTime           @default(now())
+
+  config      PredictionConfig? @relation(fields: [configId], references: [id])
+  analysisRun AnalysisRun?        @relation(fields: [analysisRunId], references: [id])
+
+  @@index([createdAt(sort: Desc)])
+  @@index([strategy])
+  @@index([analysisRunId])
+  @@map("lotofacil_predictions")
+}
+
+// ─── Mega-Sena (6 dezenas, universo 1–60) ────────────────────
+
+model MegasenaDraw {
+  id              String   @id @default(cuid())
+  contestNumber   Int      @unique
+  drawDate        DateTime
+  numbers         Int[]
+  accumulated     Boolean  @default(false)
+  prizePool       Float?
+  winnersCount    Int?
+  nextEstimate    Float?
+  dataSourceId    String?
+  importBatchId   String?
+  rawPayload      Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  dataSource  DataSource?  @relation(fields: [dataSourceId], references: [id])
+  importBatch ImportBatch? @relation(fields: [importBatchId], references: [id])
+
+  @@index([drawDate(sort: Desc)])
+  @@index([importBatchId])
+  @@index([contestNumber(sort: Desc)])
+  @@map("megasena_draws")
+}
+
+model MegasenaPrediction {
+  id              String             @id @default(cuid())
+  numbers         Int[]
+  strategy        PredictionStrategy
+  confidence      Float?
+  configId        String?
+  analysisRunId   String?
+  basedOnContestFrom Int?
+  basedOnContestTo   Int?
+  filterConfig    Json?
+  metadata        Json?
+  notes           String?
+  createdAt       DateTime           @default(now())
+
+  config      PredictionConfig? @relation(fields: [configId], references: [id])
+  analysisRun AnalysisRun?        @relation(fields: [analysisRunId], references: [id])
+
+  @@index([createdAt(sort: Desc)])
+  @@index([strategy])
+  @@index([analysisRunId])
+  @@map("megasena_predictions")
+}
+
+// ─── Quina (5 dezenas, universo 1–80) ────────────────────────
+
+model QuinaDraw {
+  id              String   @id @default(cuid())
+  contestNumber   Int      @unique
+  drawDate        DateTime
+  numbers         Int[]
+  accumulated     Boolean  @default(false)
+  prizePool       Float?
+  winnersCount    Int?
+  nextEstimate    Float?
+  dataSourceId    String?
+  importBatchId   String?
+  rawPayload      Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  dataSource  DataSource?  @relation(fields: [dataSourceId], references: [id])
+  importBatch ImportBatch? @relation(fields: [importBatchId], references: [id])
+
+  @@index([drawDate(sort: Desc)])
+  @@index([importBatchId])
+  @@index([contestNumber(sort: Desc)])
+  @@map("quina_draws")
+}
+
+model QuinaPrediction {
+  id              String             @id @default(cuid())
+  numbers         Int[]
+  strategy        PredictionStrategy
+  confidence      Float?
+  configId        String?
+  analysisRunId   String?
+  basedOnContestFrom Int?
+  basedOnContestTo   Int?
+  filterConfig    Json?
+  metadata        Json?
+  notes           String?
+  createdAt       DateTime           @default(now())
+
+  config      PredictionConfig? @relation(fields: [configId], references: [id])
+  analysisRun AnalysisRun?        @relation(fields: [analysisRunId], references: [id])
+
+  @@index([createdAt(sort: Desc)])
+  @@index([strategy])
+  @@index([analysisRunId])
+  @@map("quina_predictions")
+}
