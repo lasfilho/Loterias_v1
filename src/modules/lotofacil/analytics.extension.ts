@@ -4,23 +4,20 @@ import type {
   LineColumnStat,
 } from "../shared/analytics/types";
 import { type DrawRecord } from "../shared/repository/base-repository";
-
-/** Volante Lotofácil: 5 linhas × 5 colunas (1-25) */
-function toLineCol(number: number): { line: number; column: number } {
-  const idx = number - 1;
-  return { line: Math.floor(idx / 5) + 1, column: (idx % 5) + 1 };
-}
-
-function isFrameCell(line: number, column: number): boolean {
-  return line === 1 || line === 5 || column === 1 || column === 5;
-}
+import {
+  computeLotofacilAggregateFrameCore,
+  computeLotofacilFrameCoreStudy,
+} from "./frame-core-study";
+import {
+  lotofacilToGridPosition,
+} from "./volante.constants";
 
 export const lotofacilAnalyticsExtension: GameAnalyticsExtension = {
   slug: "lotofacil",
 
   compute(draws, rules) {
     const lineColumn = this.getLineColumn?.(draws, rules) ?? [];
-    const frameCore = this.getFrameCore?.(draws, rules);
+    const frameCoreStudy = computeLotofacilFrameCoreStudy(draws);
 
     const lineTotals = new Map<number, number>();
     const colTotals = new Map<number, number>();
@@ -31,7 +28,7 @@ export const lotofacilAnalyticsExtension: GameAnalyticsExtension = {
 
     draws.forEach((d) => {
       d.numbers.forEach((n) => {
-        const { line, column } = toLineCol(n);
+        const { line, column } = lotofacilToGridPosition(n);
         lineTotals.set(line, (lineTotals.get(line) ?? 0) + 1);
         colTotals.set(column, (colTotals.get(column) ?? 0) + 1);
       });
@@ -40,35 +37,14 @@ export const lotofacilAnalyticsExtension: GameAnalyticsExtension = {
     return {
       lineTotals: Object.fromEntries(lineTotals),
       columnTotals: Object.fromEntries(colTotals),
-      frameCore,
+      frameCore: frameCoreStudy.aggregate,
+      frameCoreStudy,
       lineColumnGrid: lineColumn,
     };
   },
 
   getFrameCore(draws: DrawRecord[]): FrameCoreStat {
-    let frameCount = 0;
-    let coreCount = 0;
-
-    draws.forEach((d) => {
-      d.numbers.forEach((n) => {
-        const { line, column } = toLineCol(n);
-        if (isFrameCell(line, column)) frameCount++;
-        else coreCount++;
-      });
-    });
-
-    const total = frameCount + coreCount;
-    return {
-      frame: {
-        count: frameCount,
-        percentage: total > 0 ? (frameCount / total) * 100 : 0,
-      },
-      core: {
-        count: coreCount,
-        percentage: total > 0 ? (coreCount / total) * 100 : 0,
-      },
-      definition: "Moldura: borda do volante 5×5; Miolo: célula central (3,3)",
-    };
+    return computeLotofacilAggregateFrameCore(draws);
   },
 
   getLineColumn(draws: DrawRecord[]): LineColumnStat[] {
@@ -77,7 +53,7 @@ export const lotofacilAnalyticsExtension: GameAnalyticsExtension = {
 
     draws.forEach((d) => {
       d.numbers.forEach((n) => {
-        const { line, column } = toLineCol(n);
+        const { line, column } = lotofacilToGridPosition(n);
         const key = `${line}-${column}`;
         counts.set(key, (counts.get(key) ?? 0) + 1);
         total++;
@@ -99,11 +75,6 @@ export const lotofacilAnalyticsExtension: GameAnalyticsExtension = {
   },
 };
 
-export function computeLotofacilMolduraMiolo(
-  draws: DrawRecord[]
-): FrameCoreStat {
-  return lotofacilAnalyticsExtension.getFrameCore!(draws, {
-    minNumber: 1,
-    maxNumber: 25,
-  } as import("../shared/constants").GameRules)!;
+export function computeLotofacilMolduraMiolo(draws: DrawRecord[]) {
+  return computeLotofacilFrameCoreStudy(draws);
 }

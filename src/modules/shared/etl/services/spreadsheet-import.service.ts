@@ -156,11 +156,13 @@ export async function importSpreadsheet(
       lastContestProcessed,
       errorMessage:
         errors.length > 0 ? `${errors.length} linha(s) com falha` : null,
-      metadata: {
-        filePath,
-        rowsRead: rows.length,
-        errors: errors.slice(0, 100),
-      },
+      metadata: JSON.parse(
+        JSON.stringify({
+          filePath,
+          rowsRead: rows.length,
+          errors: errors.slice(0, 100),
+        })
+      ),
     },
   });
 
@@ -202,7 +204,7 @@ export async function importAllSpreadsheets(
 function resolveImportStatus(
   failed: number,
   succeeded: number
-): ImportStatus {
+): IngestionResult["status"] {
   if (failed > 0 && succeeded === 0) return ImportStatus.FAILED;
   if (failed > 0) return ImportStatus.PARTIAL;
   return ImportStatus.SUCCESS;

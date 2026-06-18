@@ -79,7 +79,7 @@ export function mapSpreadsheetRowToNormalized(
   return {
     success: true,
     draw,
-    rawPayload: row,
+    rawPayload: row as unknown as import("../../types").CaixaDrawResponse,
     errors: [],
   };
 }

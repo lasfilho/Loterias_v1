@@ -43,6 +43,8 @@ import { DrawNumbers } from "@/components/domain/number-ball";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/input";
+import type { LotofacilFrameCoreStudy } from "@/modules/lotofacil/frame-core-study";
+import { LotofacilFrameCorePanel } from "@/components/dashboard/lotofacil-frame-core-panel";
 import { formatDate } from "@/lib/utils";
 import {
   GENERATION_MODES,
@@ -139,7 +141,7 @@ export function GameDashboardView({ slug }: GameDashboardViewProps) {
                 <DistributionTab analytics={analytics!} color={rules.color} />
               </TabsContent>
               <TabsContent value="patterns">
-                <PatternsTab analytics={analytics!} color={rules.color} />
+                <PatternsTab analytics={analytics!} color={rules.color} slug={slug} />
               </TabsContent>
               <TabsContent value="history">
                 <HistoryTab
@@ -343,10 +345,19 @@ function DistributionTab({
 function PatternsTab({
   analytics,
   color,
+  slug,
 }: {
   analytics: FullAnalyticsReport;
   color: string;
+  slug: GameSlug;
 }) {
+  const frameCoreStudy =
+    slug === "lotofacil"
+      ? (analytics.gameSpecific.data.frameCoreStudy as
+          | LotofacilFrameCoreStudy
+          | undefined)
+      : undefined;
+
   const topCooc = analytics.intermediate.cooccurrences
     .sort((a, b) => b.lift - a.lift)
     .slice(0, 8);
@@ -358,6 +369,10 @@ function PatternsTab({
 
   return (
     <div className="space-y-8">
+      {frameCoreStudy && (
+        <LotofacilFrameCorePanel study={frameCoreStudy} color={color} />
+      )}
+
       <SectionShell title="Pares e trios recorrentes">
         <div className="grid gap-6 lg:grid-cols-2">
           <DataTable
