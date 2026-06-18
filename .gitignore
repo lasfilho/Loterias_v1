@@ -44,3 +44,8 @@ next-env.d.ts
 
 # prisma
 /prisma/*.db
+
+# planilhas locais de importação (grandes)
+/data/import/*.xlsx
+/data/import/*.xls
+/data/import/*.csv

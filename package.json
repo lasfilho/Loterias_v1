@@ -17,6 +17,10 @@
     "etl:sync:lotofacil": "tsx scripts/etl/sync-game.ts lotofacil",
     "etl:sync:megasena": "tsx scripts/etl/sync-game.ts megasena",
     "etl:sync:quina": "tsx scripts/etl/sync-game.ts quina",
+    "etl:import": "tsx scripts/etl/import-spreadsheet.ts all",
+    "etl:import:lotofacil": "tsx scripts/etl/import-spreadsheet.ts lotofacil",
+    "etl:import:megasena": "tsx scripts/etl/import-spreadsheet.ts megasena",
+    "etl:import:quina": "tsx scripts/etl/import-spreadsheet.ts quina",
     "etl:load": "tsx scripts/etl/initial-load.ts all",
     "etl:load:lotofacil": "tsx scripts/etl/initial-load.ts lotofacil",
     "etl:load:megasena": "tsx scripts/etl/initial-load.ts megasena",
@@ -49,6 +53,7 @@
     "react-dom": "^19.1.0",
     "recharts": "^3.0.2",
     "tailwind-merge": "^3.3.1",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.67"
   },
   "devDependencies": {
