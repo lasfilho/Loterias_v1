@@ -1,4 +1,5 @@
 import { BetCheckStatus, GameType, type Prisma } from "@prisma/client";
+import { addDays } from "date-fns";
 import { prisma } from "@/lib/db";
 import { countHits } from "../backtest/metrics";
 import { type GameSlug, isGameSlug } from "../constants";
@@ -6,6 +7,7 @@ import { getRepository } from "../repository/registry";
 import { syncGame } from "../services/game-service";
 import { DRAW_WEEKDAYS, DEFAULT_BET_COUNT, MAX_BET_COUNT, WEEKDAY_LABELS } from "./constants";
 import { getPrizeBand, isPrizeEligible } from "./prize-band";
+import { getCheckStatusMessage } from "./status-messages";
 import type {
   ConferenceCheckView,
   ConferenceDayView,
@@ -19,7 +21,6 @@ import {
   formatWeekLabel,
   getBetWeekEnd,
   getBetWeekStart,
-  getDayBounds,
   getExpectedDateForWeekday,
   parseDateKey,
   startOfCalendarDay,
@@ -131,11 +132,22 @@ async function fetchPredictionsForWeek(
 }
 
 async function findDrawByCalendarDay(slug: GameSlug, day: Date) {
-  const { start, end } = getDayBounds(day);
+  const targetKey = toDateKey(day);
   const repo = getRepository(slug);
-  const draws = await repo.findMany({ fromDate: start, toDate: end, limit: 5 });
-  if (draws.length === 0) return null;
-  return draws.sort((a, b) => a.contestNumber - b.contestNumber)[0];
+  const anchor = startOfCalendarDay(day);
+  const searchStart = addDays(anchor, -3);
+  const searchEnd = addDays(anchor, 3);
+  searchEnd.setHours(23, 59, 59, 999);
+
+  const draws = await repo.findMany({
+    fromDate: searchStart,
+    toDate: searchEnd,
+    limit: 30,
+  });
+
+  const matched = draws.filter((d) => toDateKey(d.drawDate) === targetKey);
+  if (matched.length === 0) return null;
+  return matched.sort((a, b) => a.contestNumber - b.contestNumber)[0];
 }
 
 function resolveLiveStatus(
@@ -236,6 +248,7 @@ function createEmptySlotView(
     hits: null,
     prizeBand: null,
     isPrizeEligible: false,
+    statusMessage: getCheckStatusMessage("unassigned"),
   };
 }
 
@@ -312,6 +325,7 @@ async function buildCheckForAssignedSlot(
     hits,
     prizeBand,
     isPrizeEligible: hits !== null ? isPrizeEligible(slug, hits) : false,
+    statusMessage: getCheckStatusMessage(status),
   };
 }
 
@@ -564,6 +578,43 @@ export async function assignPredictionToSlot(
   return getWeeklyConference(slug, weekStart);
 }
 
+export async function cleanupStaleConferenceRecords(game?: GameSlug) {
+  const today = startOfCalendarDay(new Date());
+  const gameFilter = game ? { gameType: GAME_TYPE_MAP[game] } : {};
+
+  const [checksReset, batchesRemoved] = await prisma.$transaction([
+    prisma.weeklyBetCheck.updateMany({
+      where: {
+        ...gameFilter,
+        status: BetCheckStatus.DRAW_NOT_FOUND,
+      },
+      data: {
+        status: BetCheckStatus.AWAITING_DRAW,
+        contestNumber: null,
+        drawNumbers: [],
+        matchedNumbers: [],
+        hits: null,
+        prizeBand: null,
+        checkedAt: null,
+      },
+    }),
+    prisma.importBatch.deleteMany({
+      where: {
+        ...gameFilter,
+        status: { in: ["FAILED", "PARTIAL"] },
+        contestsAdded: 0,
+        contestsUpdated: 0,
+      },
+    }),
+  ]);
+
+  return {
+    checksReset: checksReset.count,
+    batchesRemoved: batchesRemoved.count,
+    fromDate: toDateKey(today),
+  };
+}
+
 export async function syncAndCheckWeeklyConference(
   slug: GameSlug,
   weekStartInput?: string
@@ -574,6 +625,7 @@ export async function syncAndCheckWeeklyConference(
     ? parseDateKey(weekStartInput)
     : getBetWeekStart();
 
+  await cleanupStaleConferenceRecords(slug);
   await syncGame(slug, 30);
 
   const conference = await getWeeklyConference(slug, weekStart, {

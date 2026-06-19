@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { DisclaimerBanner, PageHeader } from "@/components/layout/page-header";
-import { Label, Select, Input } from "@/components/ui/input";
+import { GameModalitySelect } from "@/components/domain/game-modality-select";
+import { Label, Input } from "@/components/ui/input";
 import {
   DelayChart,
   FrequencyChart,
@@ -11,7 +12,6 @@ import {
 } from "@/components/charts/analytics-charts";
 import {
   GAMES,
-  GAME_SLUGS,
   type GameSlug,
 } from "@/modules/shared/constants";
 import { Button } from "@/components/ui/button";
@@ -57,20 +57,11 @@ export default function AnalisesPage() {
 
       <div className="glass rounded-xl p-6 mt-8">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <Label>Modalidade</Label>
-            <Select
-              value={game}
-              onChange={(e) => setGame(e.target.value as GameSlug)}
-              className="mt-1.5"
-            >
-              {GAME_SLUGS.map((slug) => (
-                <option key={slug} value={slug}>
-                  {GAMES[slug].name}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <GameModalitySelect
+            id="analises-game"
+            value={game}
+            onChange={setGame}
+          />
           <div>
             <Label>Concurso inicial</Label>
             <Input

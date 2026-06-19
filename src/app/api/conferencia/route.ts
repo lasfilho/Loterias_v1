@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isGameSlug } from "@/modules/shared/constants";
 import {
   assignPredictionToSlot,
+  cleanupStaleConferenceRecords,
   getWeeklyConference,
   markWeekAsReviewed,
   setWeekBetCount,
@@ -87,6 +88,14 @@ export async function POST(request: Request) {
       }
       const conference = await setWeekBetCount(game, weekStart, betCount);
       return NextResponse.json(conference);
+    }
+
+    if (action === "cleanup") {
+      const result = await cleanupStaleConferenceRecords(game);
+      const conference = weekStart
+        ? await getWeeklyConference(game, weekStart, { persist: true })
+        : null;
+      return NextResponse.json({ ...result, conference });
     }
 
     const result = await syncAndCheckWeeklyConference(game, weekStart);

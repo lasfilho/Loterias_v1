@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { BetPickerModal } from "@/components/domain/bet-picker-modal";
-import { CompactVolanteGrid } from "@/components/domain/compact-volante-grid";
+import { CompactVolanteCard } from "@/components/domain/compact-volante-card";
 import {
-  DAY_COLUMN_MIN_CLASS,
+  getConferenceBoardClass,
+  getConferenceDayClass,
+} from "@/components/domain/volante-layout";
+import {
   WEEKDAY_SHORT,
-  WEEK_DAYS_ROW_CLASS,
 } from "@/modules/shared/weekly-bet/constants";
 import type { GameSlug } from "@/modules/shared/constants";
 import type {
@@ -16,6 +18,8 @@ import type {
   ConferenceWeekView,
   SavedBetView,
 } from "@/modules/shared/weekly-bet/types";
+import { getGameTheme } from "@/lib/game-theme";
+import { getCheckStatusShortLabel } from "@/modules/shared/weekly-bet/status-messages";
 import { cn } from "@/lib/utils";
 
 interface ConferenceWeekBoardProps {
@@ -48,6 +52,7 @@ function CompactSlot({
   showSlotIndex: boolean;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const theme = getGameTheme(game);
 
   const handleSelect = async (predictionId: string) => {
     await onAssign(check.weekday, check.betSlot, predictionId);
@@ -56,55 +61,60 @@ function CompactSlot({
 
   return (
     <>
-      <button
-        type="button"
+      <CompactVolanteCard
+        game={game}
+        selectedNumbers={check.betNumbers}
+        matchedNumbers={check.matchedNumbers}
+        drawNumbers={check.drawNumbers}
+        dashed={!check.assigned}
+        interactive
         onClick={() => setModalOpen(true)}
         disabled={assigning}
+        label={
+          showSlotIndex ? (
+            <span>Jogo {check.betSlot}</span>
+          ) : undefined
+        }
+        footer={
+          <>
+            {check.assigned && check.hits !== null && (
+              <p
+                className={cn(
+                  "text-[10px] font-bold text-center mt-1.5 tabular-nums",
+                  check.isPrizeEligible
+                    ? theme.prizeHits
+                    : "text-muted-foreground"
+                )}
+              >
+                {check.hits} ac.
+              </p>
+            )}
+            {check.assigned && check.status !== "checked" && check.statusMessage && (
+              <p
+                className={cn(
+                  "text-[9px] text-center mt-1.5 leading-snug px-1",
+                  check.status === "not_found"
+                    ? "text-muted-foreground"
+                    : "text-amber-600 dark:text-amber-400"
+                )}
+              >
+                {check.statusMessage}
+              </p>
+            )}
+            {!check.assigned && (
+              <p className="text-[9px] text-center text-muted-foreground mt-1.5 flex items-center justify-center gap-0.5">
+                <Plus className="h-2.5 w-2.5" />
+                Escolher
+              </p>
+            )}
+          </>
+        }
         title={
           check.assigned
             ? `${check.hits ?? 0} acertos — clique para trocar`
             : "Escolher jogo salvo"
         }
-        className={cn(
-          "group w-full rounded-lg border border-border/60 bg-card/50 p-1.5 transition-all",
-          "hover:ring-2 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          !check.assigned && "border-dashed",
-          assigning && "pointer-events-none opacity-50"
-        )}
-      >
-        {showSlotIndex && (
-          <p className="text-[9px] text-center text-muted-foreground mb-1 font-medium">
-            Jogo {check.betSlot}
-          </p>
-        )}
-
-        <CompactVolanteGrid
-          game={game}
-          selectedNumbers={check.betNumbers}
-          matchedNumbers={check.matchedNumbers}
-          drawNumbers={check.drawNumbers}
-        />
-
-        {check.assigned && check.hits !== null && (
-          <p
-            className={cn(
-              "text-[10px] font-bold text-center mt-1.5 tabular-nums",
-              check.isPrizeEligible
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-muted-foreground"
-            )}
-          >
-            {check.hits} ac.
-          </p>
-        )}
-
-        {!check.assigned && (
-          <p className="text-[9px] text-center text-muted-foreground mt-1.5 flex items-center justify-center gap-0.5">
-            <Plus className="h-2.5 w-2.5" />
-            Escolher
-          </p>
-        )}
-      </button>
+      />
 
       <BetPickerModal
         open={modalOpen}
@@ -140,13 +150,33 @@ function DayColumn({
   betCount: number;
 }) {
   const shortLabel = WEEKDAY_SHORT[day.weekday] ?? day.weekdayLabel.slice(0, 3);
+  const dateLabel = new Date(day.expectedDate + "T12:00:00").toLocaleDateString(
+    "pt-BR",
+    { day: "2-digit", month: "2-digit" }
+  );
+  const dayChecks = day.checks.filter((c) => c.assigned);
+  const allChecked =
+    dayChecks.length > 0 && dayChecks.every((c) => c.status === "checked");
+  const pendingCheck = dayChecks.find(
+    (c) => c.status === "awaiting" || c.status === "future"
+  );
+  const dayHint = allChecked
+    ? null
+    : pendingCheck?.statusMessage ??
+      dayChecks.find((c) => c.status === "not_found")?.statusMessage;
 
   return (
-    <div className={cn(DAY_COLUMN_MIN_CLASS, "flex flex-col gap-1.5")}>
+    <div className={cn(getConferenceDayClass(game), "flex flex-col gap-1.5")}>
       <div className="text-center rounded-lg border border-border/60 p-2 bg-card/40">
         <p className="text-[10px] text-muted-foreground uppercase font-semibold">
           {shortLabel}
         </p>
+        <p className="text-[9px] text-muted-foreground tabular-nums">{dateLabel}</p>
+        {dayHint && (
+          <p className="text-[8px] text-amber-600 dark:text-amber-400 mt-1 leading-tight px-0.5">
+            {getCheckStatusShortLabel(pendingCheck?.status ?? "not_found")}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-2 w-full">
@@ -172,7 +202,7 @@ export function ConferenceWeekBoard({
   assigning,
 }: ConferenceWeekBoardProps) {
   return (
-    <div className={WEEK_DAYS_ROW_CLASS}>
+    <div className={getConferenceBoardClass(conference.game)}>
       {conference.days.map((day) => (
         <DayColumn
           key={day.weekday}

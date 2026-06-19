@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label } from "@/components/ui/input";
 import { GAMES, GAME_SLUGS, type GameSlug } from "@/modules/shared/constants";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 interface SyncLog {
   id: string;
@@ -61,6 +61,8 @@ export default function ImportacaoPage() {
     switch (status) {
       case "SUCCESS":
         return <Badge variant="success">Sucesso</Badge>;
+      case "PARTIAL":
+        return <Badge variant="warning">Parcial</Badge>;
       case "FAILED":
         return <Badge variant="destructive">Falhou</Badge>;
       case "RUNNING":
@@ -68,6 +70,14 @@ export default function ImportacaoPage() {
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
+  };
+
+  const statusNoteClass = (status: string, message: string | null) => {
+    if (!message) return "";
+    if (status === "FAILED" || status === "PARTIAL") {
+      return "text-destructive";
+    }
+    return "text-muted-foreground";
   };
 
   return (
@@ -97,7 +107,8 @@ export default function ImportacaoPage() {
               className="mt-1.5"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Útil para testes rápidos. Deixe vazio para sincronizar tudo.
+              Em carga inicial: limita o último número de concurso. Em atualização
+              incremental: quantidade máxima de concursos novos por execução.
             </p>
           </div>
 
@@ -172,8 +183,18 @@ export default function ImportacaoPage() {
                   </div>
                   <div className="text-xs text-muted-foreground">
                     +{log.contestsAdded} concursos | Total: {log.contestsTotal}
+                    {log.lastContestProcessed != null && (
+                      <span className="ml-2">
+                        até concurso {log.lastContestProcessed}
+                      </span>
+                    )}
                     {log.errorMessage && (
-                      <span className="text-destructive ml-2">
+                      <span
+                        className={cn(
+                          "ml-2",
+                          statusNoteClass(log.status, log.errorMessage)
+                        )}
+                      >
                         {log.errorMessage}
                       </span>
                     )}

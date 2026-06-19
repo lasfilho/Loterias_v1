@@ -20,7 +20,7 @@ export interface IngestionOptions {
   mode?: IngestionMode;
   fromContest?: number;
   toContest?: number;
-  /** Limita o concurso máximo (útil para testes) */
+  /** Em carga full: limita o número do último concurso. Em incremental: máx. de concursos novos por execução. */
   maxContests?: number;
   /** Reprocessa concursos já existentes (atualiza registros) */
   forceUpdate?: boolean;

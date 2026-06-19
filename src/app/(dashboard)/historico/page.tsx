@@ -3,18 +3,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { DisclaimerBanner, PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label, Select } from "@/components/ui/input";
+import { GameModalitySelect } from "@/components/domain/game-modality-select";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DrawNumbers } from "@/components/domain/number-ball";
+import { PredictionVolanteCard } from "@/components/domain/prediction-volante-card";
 import {
   GAMES,
-  GAME_SLUGS,
   PREDICTION_STRATEGIES,
   type GameSlug,
 } from "@/modules/shared/constants";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
+import {
+  getVolanteListContainerClass,
+  getVolanteListItemClass,
+} from "@/components/domain/volante-layout";
 
 interface Prediction {
   id: string;
@@ -89,77 +92,73 @@ export default function HistoricoPage() {
       <DisclaimerBanner />
 
       <div className="mt-8 max-w-xs">
-        <Label>Modalidade</Label>
-        <Select
+        <GameModalitySelect
+          id="historico-game"
           value={game}
-          onChange={(e) => setGame(e.target.value as GameSlug)}
-          className="mt-1.5"
-        >
-          {GAME_SLUGS.map((slug) => (
-            <option key={slug} value={slug}>
-              {GAMES[slug].name}
-            </option>
-          ))}
-        </Select>
+          onChange={setGame}
+        />
       </div>
 
-      <div className="grid gap-4 mt-6">
+      <div className={cn(getVolanteListContainerClass(game), "mt-6")}>
         {loading ? (
-          <Card className="glass">
+          <Card className="glass w-full">
             <CardContent className="py-12 flex justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </CardContent>
           </Card>
         ) : predictions.length === 0 ? (
-          <Card className="glass">
+          <Card className="glass w-full">
             <CardContent className="py-12 text-center text-muted-foreground text-sm">
               Nenhum palpite salvo para {rules.name}.
             </CardContent>
           </Card>
         ) : (
-          predictions.map((p) => (
-            <Card key={p.id} className="glass">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-3">
-                  <CardTitle className="text-sm font-medium">
-                    {formatDate(p.createdAt)}
-                  </CardTitle>
-                  <div className="flex items-center gap-2 flex-wrap justify-end">
-                    <Badge variant="outline">
-                      {PREDICTION_STRATEGIES.find(
-                        (s) => s.value === p.strategy
-                      )?.label ?? p.strategy}
-                    </Badge>
-                    {p.confidence && (
-                      <Badge variant="secondary">
-                        {(p.confidence * 100).toFixed(0)}%
-                      </Badge>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(p)}
-                      disabled={deletingId === p.id}
-                      className={deleteButtonClass}
-                    >
-                      {deletingId === p.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                      Excluir
-                    </Button>
-                  </div>
+          <>
+            {predictions.map((p) => {
+              const strategyLabel =
+                PREDICTION_STRATEGIES.find((s) => s.value === p.strategy)
+                  ?.label ?? p.strategy;
+
+              return (
+                <div key={p.id} className={getVolanteListItemClass(game)}>
+                  <PredictionVolanteCard
+                    game={game}
+                    numbers={p.numbers}
+                    title={formatDate(p.createdAt)}
+                    headerActions={
+                      <>
+                        <Badge
+                          variant="outline"
+                          className="text-[9px] px-1.5 py-0 font-normal"
+                        >
+                          {strategyLabel}
+                        </Badge>
+                        {p.confidence != null && (
+                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+                            {(p.confidence * 100).toFixed(0)}%
+                          </Badge>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(p)}
+                          disabled={deletingId === p.id}
+                          className={cn(deleteButtonClass, "h-6 text-[9px] px-2")}
+                        >
+                          {deletingId === p.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                          Excluir
+                        </Button>
+                      </>
+                    }
+                  />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <DrawNumbers numbers={p.numbers} color={rules.color} />
-                {p.notes && (
-                  <p className="text-xs text-muted-foreground mt-3">{p.notes}</p>
-                )}
-              </CardContent>
-            </Card>
-          ))
+              );
+            })}
+          </>
         )}
       </div>
     </div>

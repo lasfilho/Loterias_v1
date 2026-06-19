@@ -8,11 +8,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { DrawNumbers } from "@/components/domain/number-ball";
+import { CompactVolanteCard } from "@/components/domain/compact-volante-card";
 import { GAMES, type GameSlug } from "@/modules/shared/constants";
+import { getGameTheme } from "@/lib/game-theme";
 import type { SavedBetView } from "@/modules/shared/weekly-bet/types";
-import { PREDICTION_STRATEGIES } from "@/modules/shared/constants";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import Link from "next/link";
 
 interface BetPickerModalProps {
@@ -37,6 +37,7 @@ export function BetPickerModal({
   selecting = false,
 }: BetPickerModalProps) {
   const rules = GAMES[game];
+  const theme = getGameTheme(game);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,35 +55,37 @@ export function BetPickerModal({
             <p className="text-sm text-muted-foreground">
               Nenhum jogo salvo para {rules.name} nesta semana.
             </p>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className={theme.outlineButton}>
               <Link href={`/palpites?game=${game}`}>Ir para Palpites</Link>
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {bets.map((bet) => (
               <button
                 key={bet.id}
                 type="button"
                 disabled={selecting}
                 onClick={() => onSelect(bet.id)}
-                className="w-full text-left rounded-xl border border-border p-4 hover:border-primary/50 hover:bg-primary/5 transition-all disabled:opacity-50"
+                className={cn(
+                  "w-full text-left rounded-lg border border-border/60 bg-card/40 p-2 transition-all disabled:opacity-50",
+                  theme.pickerItemHover
+                )}
               >
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="text-sm font-semibold">
-                    Jogo salvo #{bet.betSlot}
+                <div className="flex items-center justify-between gap-2 mb-2 px-0.5">
+                  <span className="text-[10px] font-semibold">
+                    Jogo #{bet.betSlot}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[9px] text-muted-foreground">
                     {formatDate(bet.savedAt)}
                   </span>
                 </div>
-                <DrawNumbers numbers={bet.numbers} color={rules.color} />
-                <p className="text-xs text-muted-foreground mt-2">
-                  {PREDICTION_STRATEGIES.find((s) => s.value === bet.strategy)
-                    ?.label ?? bet.strategy}
-                </p>
+                <CompactVolanteCard game={game} selectedNumbers={bet.numbers} />
               </button>
             ))}
+            <p className="text-[10px] text-muted-foreground text-center pt-2 border-t border-border/40">
+              Toque em um cartão para associar ao dia selecionado.
+            </p>
           </div>
         )}
       </DialogContent>

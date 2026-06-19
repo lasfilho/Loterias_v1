@@ -22,21 +22,19 @@ import type { ConferenceWeekView } from "@/modules/shared/weekly-bet/types";
 import { formatWeekLabel, getBetWeekStart, toDateKey } from "@/modules/shared/weekly-bet/week-utils";
 import { MAX_BET_COUNT } from "@/modules/shared/weekly-bet/constants";
 import { subWeeks } from "date-fns";
+import { getGameTheme } from "@/lib/game-theme";
 import { cn } from "@/lib/utils";
-
-const outlinePurpleButtonClass =
-  "gap-2 border border-border bg-transparent text-foreground shadow-none hover:bg-primary hover:text-primary-foreground hover:border-primary active:bg-primary/90 active:scale-[0.98] transition-all";
 
 const TAB_TRIGGER_BASE =
   "flex-1 min-w-[100px] gap-2 py-2.5 border-2 border-transparent rounded-lg font-medium text-muted-foreground opacity-75 hover:opacity-100 transition-all";
 
 const TAB_ACTIVE_CLASSES: Record<GameSlug, string> = {
   lotofacil:
-    "data-[state=active]:opacity-100 data-[state=active]:font-bold data-[state=active]:border-violet-500 data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-200 data-[state=active]:shadow-[0_2px_12px_rgba(124,58,237,0.25)]",
+    "data-[state=active]:opacity-100 data-[state=active]:font-bold data-[state=active]:border-violet-300 data-[state=active]:bg-violet-300/12 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-200 data-[state=active]:shadow-[0_2px_12px_rgba(196,181,253,0.2)]",
   megasena:
-    "data-[state=active]:opacity-100 data-[state=active]:font-bold data-[state=active]:border-emerald-500 data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-200 data-[state=active]:shadow-[0_2px_12px_rgba(22,163,74,0.25)]",
+    "data-[state=active]:opacity-100 data-[state=active]:font-bold data-[state=active]:border-emerald-300 data-[state=active]:bg-emerald-300/12 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-200 data-[state=active]:shadow-[0_2px_12px_rgba(134,239,172,0.2)]",
   quina:
-    "data-[state=active]:opacity-100 data-[state=active]:font-bold data-[state=active]:border-blue-500 data-[state=active]:bg-blue-500/15 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-200 data-[state=active]:shadow-[0_2px_12px_rgba(37,99,235,0.25)]",
+    "data-[state=active]:opacity-100 data-[state=active]:font-bold data-[state=active]:border-sky-300 data-[state=active]:bg-sky-300/12 data-[state=active]:text-sky-600 dark:data-[state=active]:text-sky-200 data-[state=active]:shadow-[0_2px_12px_rgba(125,211,252,0.2)]",
 };
 
 function buildWeekOptions(count = 12) {
@@ -78,6 +76,7 @@ function TabPanel({
   minHits: number;
 }) {
   const [conference, setConference] = useState<ConferenceWeekView | null>(null);
+  const theme = getGameTheme(game);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -250,7 +249,7 @@ function TabPanel({
         <CardContent className="py-12 text-center space-y-4">
           <AlertCircle className="h-10 w-10 mx-auto text-destructive" />
           <p className="text-sm text-destructive">{error}</p>
-          <Button variant="outline" onClick={load} className={outlinePurpleButtonClass}>
+          <Button variant="outline" onClick={load} className={theme.outlineButton}>
             Tentar novamente
           </Button>
         </CardContent>
@@ -302,7 +301,7 @@ function TabPanel({
           size="sm"
           onClick={syncResults}
           disabled={syncing}
-          className={outlinePurpleButtonClass}
+          className={theme.outlineButton}
         >
           {syncing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -315,7 +314,7 @@ function TabPanel({
           variant="outline"
           size="sm"
           onClick={exportConference}
-          className={outlinePurpleButtonClass}
+          className={theme.outlineButton}
         >
           <Download className="h-4 w-4" />
           Exportar
@@ -325,7 +324,7 @@ function TabPanel({
             variant="outline"
             size="sm"
             onClick={markReviewed}
-            className={outlinePurpleButtonClass}
+            className={theme.outlineButton}
           >
             <CheckCircle2 className="h-4 w-4" />
             Marcar semana conferida
@@ -345,7 +344,11 @@ function TabPanel({
         <SummaryKpi
           label="Cartões preenchidos"
           value={`${s.assignedSlots}/${s.totalSlots}`}
-          hint={`${s.checkedSlots} conferidos · ${s.awaitingSlots} aguardando`}
+          hint={
+            s.awaitingSlots > 0
+              ? `${s.checkedSlots} conferidos · ${s.awaitingSlots} aguardando publicação da Caixa`
+              : `${s.checkedSlots} conferidos`
+          }
         />
         <SummaryKpi
           label="Máx. acertos"
@@ -360,8 +363,13 @@ function TabPanel({
       </div>
 
       {s.prizeEligibleCount > 0 && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 flex items-center gap-3">
-          <Trophy className="h-5 w-5 text-emerald-500 shrink-0" />
+        <div
+          className={cn(
+            "rounded-xl border px-4 py-3 flex items-center gap-3",
+            theme.comparisonPanelBg
+          )}
+        >
+          <Trophy className={cn("h-5 w-5 shrink-0", theme.prizeHits)} />
           <p className="text-sm">
             <span className="font-semibold">{s.prizeEligibleCount}</span>{" "}
             conferência(s) atingiram faixa premiável nesta semana.

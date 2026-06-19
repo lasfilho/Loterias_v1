@@ -50,6 +50,7 @@ export class EtlPipeline {
     let contestsAdded = 0;
     let contestsUpdated = 0;
     let contestsSkipped = 0;
+    let contestsAwaitingPublish = 0;
     let contestsFailed = 0;
     let fromContest = 1;
     let toContest = 1;
@@ -67,7 +68,11 @@ export class EtlPipeline {
       });
 
       if (fromContest <= toContest) {
-        for (let contest = fromContest; contest <= toContest; contest++) {
+        contestLoop: for (
+          let contest = fromContest;
+          contest <= toContest;
+          contest++
+        ) {
           try {
             const outcome = await this.processContest(
               contest,
@@ -87,6 +92,12 @@ export class EtlPipeline {
                 break;
               case "skipped":
                 contestsSkipped++;
+                break;
+              case "not_published":
+                contestsAwaitingPublish++;
+                if (mode === "incremental") {
+                  break contestLoop;
+                }
                 break;
             }
           } catch (error) {
@@ -123,14 +134,20 @@ export class EtlPipeline {
           contestsFailed,
           contestsTotal,
           lastContestProcessed,
-          errorMessage:
-            errors.length > 0
-              ? `${errors.length} concurso(s) com falha`
-              : null,
+          errorMessage: this.resolveErrorMessage({
+            errors,
+            mode,
+            contestsAdded,
+            contestsUpdated,
+            contestsAwaitingPublish,
+            fromContest,
+            toContest,
+          }),
           metadata: JSON.parse(
             JSON.stringify({
               mode,
               errors: errors.slice(0, 100),
+              awaitingPublish: contestsAwaitingPublish,
               durationMs: Date.now() - startedAt,
             })
           ) as Prisma.InputJsonValue,
@@ -184,7 +201,7 @@ export class EtlPipeline {
     importBatchId: string,
     dataSourceId: string,
     forceUpdate: boolean
-  ): Promise<"created" | "updated" | "skipped"> {
+  ): Promise<"created" | "updated" | "skipped" | "not_published"> {
     let raw: RawDrawRecord | null;
     try {
       raw = await this.deps.adapter.fetchContest(contestNumber);
@@ -193,7 +210,7 @@ export class EtlPipeline {
     }
 
     if (!raw) {
-      return "skipped";
+      return "not_published";
     }
 
     const rawValidation = validateRawRecord(this.deps.rules, raw);
@@ -240,13 +257,13 @@ export class EtlPipeline {
     latestRemote: number,
     options: IngestionOptions
   ): Promise<{ from: number; to: number }> {
-    const cap = options.maxContests
-      ? Math.min(latestRemote, options.maxContests)
-      : latestRemote;
-
     if (mode === "reprocess") {
       const from = options.fromContest ?? 1;
-      const to = options.toContest ?? cap;
+      const to =
+        options.toContest ??
+        (options.maxContests
+          ? Math.min(latestRemote, options.maxContests)
+          : latestRemote);
       if (from > to) {
         throw new Error(`fromContest (${from}) maior que toContest (${to})`);
       }
@@ -254,19 +271,58 @@ export class EtlPipeline {
     }
 
     if (mode === "full") {
+      const to =
+        options.toContest ??
+        (options.maxContests
+          ? Math.min(latestRemote, options.maxContests)
+          : latestRemote);
       return {
         from: options.fromContest ?? 1,
-        to: options.toContest ?? cap,
+        to,
       };
     }
 
     const latestLocal = await this.deps.getLatestContest();
     const from = latestLocal ? latestLocal + 1 : 1;
-    const to = options.toContest ?? cap;
+    let to = options.toContest ?? latestRemote;
+
+    if (options.maxContests && options.maxContests > 0) {
+      to = Math.min(to, from + options.maxContests - 1);
+    }
+
     if (from > to) {
       return { from: 1, to: 0 };
     }
     return { from, to };
+  }
+
+  private resolveErrorMessage(input: {
+    errors: ContestProcessingError[];
+    mode: IngestionMode;
+    contestsAdded: number;
+    contestsUpdated: number;
+    contestsAwaitingPublish: number;
+    fromContest: number;
+    toContest: number;
+  }): string | null {
+    if (input.errors.length > 0) {
+      return `${input.errors.length} concurso(s) com falha`;
+    }
+
+    if (input.contestsAwaitingPublish > 0) {
+      return "Atualizado até o último sorteio publicado pela Caixa";
+    }
+
+    if (
+      input.mode === "incremental" &&
+      input.contestsAdded === 0 &&
+      input.contestsUpdated === 0 &&
+      input.fromContest > input.toContest
+    ) {
+      return "Dados já atualizados até o último sorteio publicado";
+    }
+
+    return null;
   }
 
   private resolveImportStatus(

@@ -36,6 +36,7 @@ export interface ConferenceCheckView {
   hits: number | null;
   prizeBand: string | null;
   isPrizeEligible: boolean;
+  statusMessage?: string;
 }
 
 export interface ConferenceDayView {

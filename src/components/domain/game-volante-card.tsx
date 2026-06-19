@@ -2,6 +2,12 @@
 
 import { LotofacilVolanteCard } from "@/components/domain/lotofacil-volante-card";
 import { GAMES, type GameSlug } from "@/modules/shared/constants";
+import {
+  getVolanteCellPresentationForGame,
+  getVolanteCellTextSize,
+  VOLANTE_GRID_SHELL,
+  type VolanteCellState,
+} from "@/lib/volante-cell-styles";
 import { cn } from "@/lib/utils";
 
 interface GameVolanteCardProps {
@@ -75,36 +81,30 @@ export function GameVolanteCard({
         </span>
       </div>
 
-      <div
-        className={cn("p-4 relative", game === "megasena" ? "bg-emerald-50/80 dark:bg-emerald-950/20" : "bg-sky-50/80 dark:bg-sky-950/20")}
-      >
+      <div className={cn("p-4 relative bg-transparent")}>
         <div
-          className="grid gap-1"
+          className={VOLANTE_GRID_SHELL}
           style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
         >
           {cells.map((n) => {
+            let state: VolanteCellState = "neutral";
             const isSelected = selected.has(n);
             const isMatch = matched.has(n);
             const isDrawOnly = !isSelected && drawn.has(n);
+            if (isMatch) state = "match";
+            else if (isSelected) state = "bet";
+            else if (isDrawOnly) state = "draw";
+
+            const presentation = getVolanteCellPresentationForGame(state, game);
 
             return (
               <div
                 key={n}
                 className={cn(
-                  "aspect-square rounded-sm flex items-center justify-center text-[10px] font-bold tabular-nums border",
-                  isMatch
-                    ? "bg-emerald-500 text-white border-emerald-600"
-                    : isSelected
-                      ? "text-white border-transparent"
-                      : isDrawOnly
-                        ? "bg-orange-500/90 text-white border-orange-600"
-                        : "bg-white/80 text-gray-500 border-border/60 dark:bg-muted/30"
+                  presentation.className,
+                  getVolanteCellTextSize(game, "compact")
                 )}
-                style={
-                  isSelected && !isMatch
-                    ? { backgroundColor: rules.color }
-                    : undefined
-                }
+                style={presentation.style}
               >
                 {String(n).padStart(2, "0")}
               </div>

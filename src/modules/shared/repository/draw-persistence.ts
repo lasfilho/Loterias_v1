@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { sanitizeJsonForPostgres } from "@/lib/utils";
 import { type NormalizedDraw } from "../types";
 import { type LoadDrawInput } from "../etl/types";
 
@@ -19,6 +20,8 @@ export function toDrawDataWithContext(input: LoadDrawInput) {
     ...toDrawData(input.draw),
     importBatchId: input.importBatchId,
     dataSourceId: input.dataSourceId,
-    rawPayload: input.rawPayload as Prisma.InputJsonValue | undefined,
+    rawPayload: input.rawPayload
+      ? (sanitizeJsonForPostgres(input.rawPayload) as Prisma.InputJsonValue)
+      : undefined,
   };
 }

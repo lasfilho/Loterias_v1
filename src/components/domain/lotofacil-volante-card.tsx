@@ -57,7 +57,7 @@ const SIZE_STYLES: Record<
     header: "text-[10px]",
     headerPad: "px-2 py-1",
     bodyPad: "p-2",
-    cell: "text-[8px] sm:text-[9px]",
+    cell: "text-[10px] sm:text-[11px]",
     gap: "gap-0.5",
     maxW: "w-full",
     badge: "text-[9px] px-1.5 py-0",
@@ -117,10 +117,7 @@ export function LotofacilVolanteCard({
         </div>
       )}
 
-      <div
-        className={styles.bodyPad}
-        style={{ backgroundColor: "#fef9e7" }}
-      >
+      <div className={cn(styles.bodyPad, "bg-transparent")}>
         <div
           className={cn("grid mx-auto w-full", styles.gap)}
           style={{
@@ -135,23 +132,21 @@ export function LotofacilVolanteCard({
               <div
                 key={n}
                 className={cn(
-                  "aspect-square rounded-sm flex items-center justify-center font-bold tabular-nums border transition-colors",
+                  "aspect-square rounded-sm flex items-center justify-center font-extrabold tabular-nums border transition-colors",
                   styles.cell,
-                  size === "mini" ? "border" : "border-2",
+                  size === "mini" ? "border" : "border",
                   isSelected
-                    ? "text-white border-transparent shadow-sm"
+                    ? "shadow-sm"
                     : isFrame
-                      ? "bg-white border-red-300/70 text-gray-800"
-                      : "bg-white/80 border-dashed border-red-200/50 text-gray-500"
+                      ? "bg-transparent border-red-300/50 text-muted-foreground"
+                      : "bg-transparent border-dashed border-red-200/40 text-muted-foreground/70"
                 )}
                 style={
                   isSelected
                     ? {
-                        backgroundColor: color,
-                        boxShadow:
-                          size === "mini"
-                            ? undefined
-                            : `0 2px 8px ${color}66`,
+                        background: `linear-gradient(135deg, ${color}33, ${color}14)`,
+                        borderColor: `${color}48`,
+                        color,
                       }
                     : undefined
                 }

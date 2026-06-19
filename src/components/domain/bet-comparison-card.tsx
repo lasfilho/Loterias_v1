@@ -13,7 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { GAMES } from "@/modules/shared/constants";
+import { getGameTheme } from "@/lib/game-theme";
 import type { ConferenceCheckView } from "@/modules/shared/weekly-bet/types";
+import { getCheckStatusMessage } from "@/modules/shared/weekly-bet/status-messages";
 import {
   ComparisonLegend,
   ComparisonNumberGrid,
@@ -32,9 +34,9 @@ const STATUS_CONFIG: Record<
 > = {
   unassigned: { label: "Escolher jogo", variant: "outline" },
   checked: { label: "Conferido", variant: "success" },
-  awaiting: { label: "Aguardando sorteio", variant: "warning" },
+  awaiting: { label: "Aguardando Caixa", variant: "warning" },
   future: { label: "Sorteio futuro", variant: "outline" },
-  not_found: { label: "Resultado indisponível", variant: "destructive" },
+  not_found: { label: "Sem resultado oficial", variant: "secondary" },
 };
 
 export function BetComparisonCard({
@@ -44,6 +46,7 @@ export function BetComparisonCard({
 }: BetComparisonCardProps) {
   const [expanded, setExpanded] = useState(false);
   const rules = GAMES[game];
+  const theme = getGameTheme(game);
   const status = STATUS_CONFIG[check.status];
 
   return (
@@ -87,39 +90,42 @@ export function BetComparisonCard({
 
         {check.status === "checked" && (
           <div
-            className="rounded-xl p-3 border border-border/50"
-            style={{ backgroundColor: game === "lotofacil" ? "#fef9e7" : undefined }}
+            className={cn(
+              "rounded-xl p-3 border",
+              theme.comparisonPanelBg
+            )}
           >
             <ComparisonNumberGrid
               minNumber={rules.minNumber}
               maxNumber={rules.maxNumber}
               betNumbers={check.betNumbers}
               drawNumbers={check.drawNumbers}
+              game={game}
               animateReveal={animateReveal}
               size="compact"
             />
-            <ComparisonLegend className="mt-3 justify-center" />
+            <ComparisonLegend className="mt-3 justify-center" game={game} />
           </div>
         )}
 
         {check.status === "awaiting" && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
-            <Clock className="h-4 w-4" />
-            Aguardando resultado oficial deste sorteio
+          <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300 py-4 justify-center text-center px-2">
+            <Clock className="h-4 w-4 shrink-0" />
+            {check.statusMessage ?? getCheckStatusMessage("awaiting")}
           </div>
         )}
 
         {check.status === "future" && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
-            <Calendar className="h-4 w-4" />
-            Sorteio ainda não realizado
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center text-center px-2">
+            <Calendar className="h-4 w-4 shrink-0" />
+            {check.statusMessage ?? getCheckStatusMessage("future")}
           </div>
         )}
 
         {check.status === "not_found" && (
-          <div className="flex items-center gap-2 text-sm text-destructive/90 py-4 justify-center">
-            <AlertCircle className="h-4 w-4" />
-            Resultado não encontrado — pode ser feriado ou ajuste de calendário
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center text-center px-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {check.statusMessage ?? getCheckStatusMessage("not_found")}
           </div>
         )}
       </CardHeader>
@@ -159,7 +165,7 @@ export function BetComparisonCard({
               </p>
             )}
             {check.matchedNumbers.length > 0 && (
-              <p className="text-emerald-600 dark:text-emerald-400 font-medium">
+              <p className={cn("font-medium", theme.prizeHits)}>
                 Coincidências:{" "}
                 {check.matchedNumbers.map((n) => String(n).padStart(2, "0")).join(" · ")}
               </p>

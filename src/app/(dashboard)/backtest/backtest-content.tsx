@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { FlaskConical, Loader2, Play, Save } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { GameModalitySelect } from "@/components/domain/game-modality-select";
 import { Label, Select, Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -227,20 +228,12 @@ export default function BacktestPage() {
             <h2 className="font-semibold text-sm">Configuração</h2>
           </div>
 
-          <div>
-            <Label className="text-xs">Modalidade</Label>
-            <Select
-              value={game}
-              onChange={(e) => setGame(e.target.value as GameSlug)}
-              className="mt-1.5"
-            >
-              {GAME_SLUGS.map((slug) => (
-                <option key={slug} value={slug}>
-                  {GAMES[slug].name}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <GameModalitySelect
+            id="backtest-game"
+            value={game}
+            onChange={setGame}
+            labelClassName="text-xs"
+          />
 
           <div>
             <Label className="text-xs">Modo de geração</Label>

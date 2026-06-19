@@ -6,10 +6,16 @@ import { Loader2, Save, Sparkles } from "lucide-react";
 import { DisclaimerBanner, PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GameModalitySelect } from "@/components/domain/game-modality-select";
 import { Label, Select } from "@/components/ui/input";
-import { DrawNumbers } from "@/components/domain/number-ball";
+import { PredictionVolanteCard } from "@/components/domain/prediction-volante-card";
+import {
+  getVolanteListContainerClass,
+  getVolanteListItemClass,
+} from "@/components/domain/volante-layout";
 import { GAMES, GAME_SLUGS, type GameSlug } from "@/modules/shared/constants";
 import { Badge } from "@/components/ui/badge";
+import { getGameTheme } from "@/lib/game-theme";
 import {
   GENERATION_MODES,
   GENERATION_STRATEGIES,
@@ -48,6 +54,7 @@ export default function PalpitesPage() {
   const [isSaved, setIsSaved] = useState(false);
 
   const rules = GAMES[game];
+  const theme = getGameTheme(game);
   const hasResults = Boolean(result || batch);
 
   const resetResults = () => {
@@ -116,9 +123,6 @@ export default function PalpitesPage() {
     GENERATION_STRATEGIES.find((s) => s.value === value || s.prisma === value)
       ?.label ?? value;
 
-  const outlinePurpleButtonClass =
-    "gap-2 border border-border bg-transparent text-foreground shadow-none hover:bg-primary hover:text-primary-foreground hover:border-primary active:bg-primary/90 active:text-primary-foreground active:border-primary active:scale-[0.98] transition-all";
-
   return (
     <div>
       <PageHeader
@@ -134,20 +138,11 @@ export default function PalpitesPage() {
             <CardTitle className="text-base">Configuração</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label>Modalidade</Label>
-              <Select
-                value={game}
-                onChange={(e) => setGame(e.target.value as GameSlug)}
-                className="mt-1.5"
-              >
-                {GAME_SLUGS.map((slug) => (
-                  <option key={slug} value={slug}>
-                    {GAMES[slug].name}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            <GameModalitySelect
+              id="palpites-game"
+              value={game}
+              onChange={setGame}
+            />
 
             <div>
               <Label>Modo</Label>
@@ -214,7 +209,7 @@ export default function PalpitesPage() {
                 variant="outline"
                 onClick={() => generate()}
                 disabled={generating !== null}
-                className={outlinePurpleButtonClass}
+                className={theme.outlineButton}
               >
                 {generating === "single" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -227,7 +222,7 @@ export default function PalpitesPage() {
                 variant="outline"
                 onClick={() => generate(batchSize)}
                 disabled={generating !== null}
-                className={outlinePurpleButtonClass}
+                className={theme.outlineButton}
               >
                 {generating === "batch" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -240,7 +235,13 @@ export default function PalpitesPage() {
           </CardContent>
         </Card>
 
-        <Card className="glass lg:col-span-2">
+        <Card className="glass lg:col-span-2 overflow-hidden">
+          <div
+            className="h-1 w-full"
+            style={{
+              background: `linear-gradient(90deg, ${rules.color}, ${rules.color}99)`,
+            }}
+          />
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Resultado</CardTitle>
             {hasResults && (
@@ -256,7 +257,7 @@ export default function PalpitesPage() {
                   size="sm"
                   onClick={saveResults}
                   disabled={saving || generating !== null}
-                  className={outlinePurpleButtonClass}
+                  className={theme.outlineButton}
                 >
                   {saving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -270,20 +271,29 @@ export default function PalpitesPage() {
           </CardHeader>
           <CardContent>
             {batch ? (
-              <div className="space-y-8">
-                {batch.map((p, i) => (
-                  <div key={p.hash ?? i}>
-                    <p className="text-sm font-medium mb-2">Palpite {i + 1}</p>
-                    <DrawNumbers numbers={p.numbers} color={rules.color} />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {p.explanation}
-                    </p>
-                  </div>
-                ))}
+              <div className="space-y-3">
+                <div className={getVolanteListContainerClass(game)}>
+                  {batch.map((p, i) => (
+                    <div key={p.hash ?? i} className={getVolanteListItemClass(game)}>
+                      <PredictionVolanteCard
+                        game={game}
+                        numbers={p.numbers}
+                        title={`Palpite ${i + 1}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                {batch.some((p) => p.explanation) && (
+                  <p className="text-sm text-muted-foreground pt-1 border-t border-border/40">
+                    {batch.find((p) => p.explanation)?.explanation}
+                  </p>
+                )}
               </div>
             ) : result ? (
               <div className="space-y-6">
-                <DrawNumbers numbers={result.numbers} color={rules.color} />
+                <div className={getVolanteListItemClass(game)}>
+                  <PredictionVolanteCard game={game} numbers={result.numbers} />
+                </div>
                 <div className="flex flex-wrap gap-3">
                   <Badge variant="secondary">
                     Score: {((result.score ?? result.confidence) * 100).toFixed(0)}%

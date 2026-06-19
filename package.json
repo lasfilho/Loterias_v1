@@ -29,7 +29,8 @@
     "etl:reprocess": "tsx scripts/etl/reprocess.ts",
     "analytics:run": "tsx scripts/analytics/run.ts",
     "predictions:generate": "tsx scripts/predictions/generate.ts",
-    "backtest:run": "tsx scripts/backtest/run.ts"
+    "backtest:run": "tsx scripts/backtest/run.ts",
+    "conference:cleanup": "tsx scripts/conference/cleanup-failures.ts all"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
