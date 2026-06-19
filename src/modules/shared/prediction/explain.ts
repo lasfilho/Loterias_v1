@@ -1,5 +1,6 @@
 import type { FullAnalyticsReport } from "../analytics/types";
 import type { GeneratedPrediction } from "./types";
+import { formatSpecialNumbersSummary } from "./special-numbers-heuristics";
 
 export function buildExplanation(
   numbers: number[],
@@ -30,11 +31,12 @@ export function buildExplanation(
 
   const hotHits = numbers.filter((n) => report.hotNumbers.includes(n)).length;
   const coldHits = numbers.filter((n) => report.coldNumbers.includes(n)).length;
+  const specialSummary = formatSpecialNumbersSummary(numbers, report);
 
   let summary =
     `Palpite ${strategyLabel} (${modeLabel}): ${numbers.length} dezenas ` +
     `baseadas em ${report.totalDraws} concursos. ` +
-    `${hotHits} quentes, ${coldHits} frias. ` +
+    `${hotHits} quentes, ${coldHits} frias. ${specialSummary}. ` +
     `Heurístico — sem garantia de acerto.`;
 
   if (validationReasons.length > 0) {

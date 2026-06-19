@@ -1,6 +1,6 @@
 "use client";
 
-import { Filter, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Filter, PanelRightClose, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import type { DashboardFilters } from "@/types/dashboard";
@@ -14,7 +14,7 @@ interface DashboardFiltersPanelProps {
   activeCount: number;
   accent?: string;
   className?: string;
-  collapsed?: boolean;
+  onCollapse?: () => void;
 }
 
 export function DashboardFiltersPanel({
@@ -25,6 +25,7 @@ export function DashboardFiltersPanel({
   activeCount,
   accent,
   className,
+  onCollapse,
 }: DashboardFiltersPanelProps) {
   return (
     <aside
@@ -57,19 +58,34 @@ export function DashboardFiltersPanel({
             </p>
           </div>
         </div>
-        {activeCount > 0 && (
-          <span
-            className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-            style={{
-              background: accent
-                ? `color-mix(in srgb, ${accent} 15%, transparent)`
-                : "var(--muted)",
-              color: accent,
-            }}
-          >
-            {activeCount}
-          </span>
-        )}
+        <div className="flex items-center gap-1 shrink-0">
+          {activeCount > 0 && (
+            <span
+              className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+              style={{
+                background: accent
+                  ? `color-mix(in srgb, ${accent} 15%, transparent)`
+                  : "var(--muted)",
+                color: accent,
+              }}
+            >
+              {activeCount}
+            </span>
+          )}
+          {onCollapse && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onCollapse}
+              aria-label="Ocultar filtros"
+              title="Ocultar filtros"
+            >
+              <PanelRightClose className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-4">

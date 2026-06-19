@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { isGameSlug } from "@/modules/shared/constants";
 import {
   generatePredictions,
+  normalizePredictionPayload,
+  saveGeneratedPredictions,
 } from "@/modules/shared/services/game-service";
 import type {
   GenerationMode,
@@ -67,6 +69,54 @@ export async function POST(
     }
 
     return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro interno" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ game: string }> }
+) {
+  const { game } = await params;
+  if (!isGameSlug(game)) {
+    return NextResponse.json({ error: "Jogo inválido" }, { status: 400 });
+  }
+
+  try {
+    const body = (await request.json()) as Record<string, unknown>;
+    const rawList = (body.predictions ?? (body.prediction ? [body.prediction] : [])) as
+      | Record<string, unknown>[]
+      | undefined;
+
+    if (!rawList?.length) {
+      return NextResponse.json(
+        { error: "Nenhum palpite para salvar" },
+        { status: 400 }
+      );
+    }
+
+    const predictions = rawList.map((raw) =>
+      normalizePredictionPayload(game, raw)
+    );
+    const savedIds = await saveGeneratedPredictions(
+      game,
+      predictions,
+      body.notes as string | undefined,
+      {
+        analysisRunId: body.analysisRunId as string | undefined,
+        configId: body.configId as string | undefined,
+      }
+    );
+
+    return NextResponse.json({
+      savedIds,
+      savedId: savedIds[0],
+      count: savedIds.length,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erro interno" },

@@ -23,6 +23,7 @@ import {
   getBacktestRun,
 } from "../backtest/backtest-pipeline.service";
 import type { BacktestRequest } from "../backtest/types";
+import { assignBetWeekFields } from "../weekly-bet/bet-assignment";
 
 export { resolveRepository as getRepository };
 
@@ -134,10 +135,13 @@ export async function saveGeneratedPrediction(
   notes?: string,
   links?: { analysisRunId?: string; configId?: string }
 ) {
+  const { betWeekStart, betSlot } = await assignBetWeekFields(slug);
   const data = {
     numbers: prediction.numbers,
     strategy: prediction.strategy,
     confidence: prediction.confidence,
+    betWeekStart,
+    betSlot,
     metadata: JSON.parse(
       JSON.stringify({
         ...prediction.metadata,
@@ -164,6 +168,51 @@ export async function saveGeneratedPrediction(
     case "quina":
       return prisma.quinaPrediction.create({ data });
   }
+}
+
+export async function saveGeneratedPredictions(
+  slug: GameSlug,
+  predictions: GeneratedPrediction[],
+  notes?: string,
+  links?: { analysisRunId?: string; configId?: string }
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (const prediction of predictions) {
+    const saved = await saveGeneratedPrediction(slug, prediction, notes, links);
+    ids.push(saved.id);
+  }
+  return ids;
+}
+
+export function normalizePredictionPayload(
+  slug: GameSlug,
+  raw: Record<string, unknown>
+): GeneratedPrediction {
+  const numbers = raw.numbers;
+  if (!Array.isArray(numbers) || numbers.length === 0) {
+    throw new Error("Palpite inválido: números ausentes");
+  }
+
+  return {
+    hash: String(raw.hash ?? `${slug}-${numbers.join("-")}`),
+    gameSlug: slug,
+    numbers: numbers as number[],
+    strategy: (raw.strategy as GeneratedPrediction["strategy"]) ?? "HYBRID",
+    strategyDetail:
+      (raw.strategyDetail as GeneratedPrediction["strategyDetail"]) ??
+      (raw.strategy as GeneratedPrediction["strategyDetail"]) ??
+      "HYBRID",
+    mode: (raw.mode as GeneratedPrediction["mode"]) ?? "BALANCED",
+    parameters: (raw.parameters as Record<string, unknown>) ?? {},
+    score: Number(raw.score ?? raw.confidence ?? 0),
+    confidence: Number(raw.confidence ?? 0),
+    explanation: String(raw.explanation ?? ""),
+    explanationDetails:
+      (raw.explanationDetails as GeneratedPrediction["explanationDetails"]) ??
+      [],
+    timestamp: String(raw.timestamp ?? new Date().toISOString()),
+    metadata: (raw.metadata as Record<string, unknown>) ?? {},
+  };
 }
 
 export async function savePrediction(
@@ -211,6 +260,23 @@ export async function getPredictions(slug: GameSlug, limit = 20) {
         orderBy: { createdAt: "desc" },
         take: limit,
       });
+  }
+}
+
+export async function deletePrediction(slug: GameSlug, id: string) {
+  if (!isGameSlug(slug)) throw new Error(`Invalid game: ${slug}`);
+
+  await prisma.weeklyBetCheck.deleteMany({
+    where: { gameType: GAMES[slug].gameType, predictionId: id },
+  });
+
+  switch (slug) {
+    case "lotofacil":
+      return prisma.lotofacilPrediction.delete({ where: { id } });
+    case "megasena":
+      return prisma.megasenaPrediction.delete({ where: { id } });
+    case "quina":
+      return prisma.quinaPrediction.delete({ where: { id } });
   }
 }
 

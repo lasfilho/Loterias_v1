@@ -26,6 +26,7 @@ import {
 } from "./strategies";
 import { buildExplanation } from "./explain";
 import { createPredictionHash, createSeededRng } from "./utils";
+import { formatSpecialNumbersSummary } from "./special-numbers-heuristics";
 import type { DrawFilter } from "../types";
 
 const MAX_REGENERATION_ATTEMPTS = 12;
@@ -205,6 +206,11 @@ export class PredictionGenerator {
         hotNumbers: report.hotNumbers.slice(0, 8),
         coldNumbers: report.coldNumbers.slice(0, 8),
         parity: report.parity,
+        specialNumbers: {
+          primes: report.basic.specialNumbers.primes.meanPerDraw,
+          fibonacci: report.basic.specialNumbers.fibonacci.meanPerDraw,
+          summary: formatSpecialNumbersSummary(numbers, report),
+        },
         validation: validation.reasons,
         engineVersion: report.meta.engineVersion,
         generatedAt: timestamp,

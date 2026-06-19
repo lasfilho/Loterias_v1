@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { GitCompare, Loader2, Sparkles } from "lucide-react";
+import { Loader2, Save, Sparkles } from "lucide-react";
 import { DisclaimerBanner, PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,11 +31,6 @@ type PredictionView = {
   id?: string;
 };
 
-type CompareView = {
-  strategy: GenerationStrategy;
-  prediction: PredictionView;
-}[];
-
 export default function PalpitesPage() {
   const searchParams = useSearchParams();
   const initialGame = (searchParams.get("game") as GameSlug) || "lotofacil";
@@ -45,21 +40,25 @@ export default function PalpitesPage() {
   );
   const [strategy, setStrategy] = useState<GenerationStrategy>("HYBRID");
   const [mode, setMode] = useState<GenerationMode>("BALANCED");
-  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState<"single" | "batch" | null>(null);
+  const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<PredictionView | null>(null);
   const [batch, setBatch] = useState<PredictionView[] | null>(null);
-  const [comparison, setComparison] = useState<CompareView | null>(null);
+  const [batchSize, setBatchSize] = useState(3);
+  const [isSaved, setIsSaved] = useState(false);
 
   const rules = GAMES[game];
+  const hasResults = Boolean(result || batch);
 
   const resetResults = () => {
     setResult(null);
     setBatch(null);
-    setComparison(null);
+    setIsSaved(false);
   };
 
-  const generate = async (save = false, batchSize = 1) => {
-    setLoading(true);
+  const generate = async (batchCount = 1) => {
+    const isBatch = batchCount > 1;
+    setGenerating(isBatch ? "batch" : "single");
     resetResults();
     try {
       const res = await fetch(`/api/games/${game}/predictions`, {
@@ -68,8 +67,7 @@ export default function PalpitesPage() {
         body: JSON.stringify({
           strategy,
           mode,
-          save,
-          batchSize: batchSize > 1 ? batchSize : undefined,
+          batchSize: batchCount > 1 ? batchCount : undefined,
         }),
       });
       if (res.ok) {
@@ -84,28 +82,29 @@ export default function PalpitesPage() {
         alert(err.error ?? "Erro ao gerar palpite");
       }
     } finally {
-      setLoading(false);
+      setGenerating(null);
     }
   };
 
-  const compareStrategies = async () => {
-    setLoading(true);
-    resetResults();
+  const saveResults = async () => {
+    const predictions = batch ?? (result ? [result] : []);
+    if (!predictions.length || isSaved) return;
+
+    setSaving(true);
     try {
-      const res = await fetch(`/api/games/${game}/predictions/compare`, {
-        method: "POST",
+      const res = await fetch(`/api/games/${game}/predictions`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify({ predictions }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setComparison(data.comparison ?? []);
+        setIsSaved(true);
       } else {
         const err = await res.json();
-        alert(err.error ?? "Erro ao comparar estratégias");
+        alert(err.error ?? "Erro ao salvar palpites");
       }
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -116,6 +115,9 @@ export default function PalpitesPage() {
   const strategyLabel = (value: string) =>
     GENERATION_STRATEGIES.find((s) => s.value === value || s.prisma === value)
       ?.label ?? value;
+
+  const outlinePurpleButtonClass =
+    "gap-2 border border-border bg-transparent text-foreground shadow-none hover:bg-primary hover:text-primary-foreground hover:border-primary active:bg-primary/90 active:text-primary-foreground active:border-primary active:scale-[0.98] transition-all";
 
   return (
     <div>
@@ -188,14 +190,33 @@ export default function PalpitesPage() {
               </p>
             </div>
 
+            <div>
+              <Label htmlFor="batch-size">Palpites no lote</Label>
+              <Select
+                id="batch-size"
+                value={String(batchSize)}
+                onChange={(e) => setBatchSize(Number(e.target.value))}
+                className="mt-1.5"
+              >
+                {[2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>
+                    {n} palpites
+                  </option>
+                ))}
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Quantidade usada no botão Gerar Lote (2 a 5).
+              </p>
+            </div>
+
             <div className="flex flex-col gap-2 pt-2">
               <Button
-                onClick={() => generate(false)}
-                disabled={loading}
-                className="gap-2"
-                style={{ background: rules.color }}
+                variant="outline"
+                onClick={() => generate()}
+                disabled={generating !== null}
+                className={outlinePurpleButtonClass}
               >
-                {loading ? (
+                {generating === "single" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Sparkles className="h-4 w-4" />
@@ -204,57 +225,51 @@ export default function PalpitesPage() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => generate(true)}
-                disabled={loading}
+                onClick={() => generate(batchSize)}
+                disabled={generating !== null}
+                className={outlinePurpleButtonClass}
               >
-                Gerar e Salvar
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => generate(false, 3)}
-                disabled={loading}
-              >
-                Gerar Lote (3)
-              </Button>
-              <Button
-                variant="outline"
-                onClick={compareStrategies}
-                disabled={loading}
-                className="gap-2"
-              >
-                <GitCompare className="h-4 w-4" />
-                Comparar Estratégias
+                {generating === "batch" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Gerar Lote ({batchSize})
               </Button>
             </div>
           </CardContent>
         </Card>
 
         <Card className="glass lg:col-span-2">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Resultado</CardTitle>
+            {hasResults && (
+              isSaved ? (
+                <Badge variant="success">
+                  {batch
+                    ? `Lote salvo (${batch.length} palpites)`
+                    : "Salvo no histórico"}
+                </Badge>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={saveResults}
+                  disabled={saving || generating !== null}
+                  className={outlinePurpleButtonClass}
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Salvar
+                </Button>
+              )
+            )}
           </CardHeader>
           <CardContent>
-            {comparison ? (
-              <div className="space-y-6">
-                {comparison.map((item) => (
-                  <div
-                    key={item.strategy}
-                    className="border-b border-border/50 pb-4 last:border-0"
-                  >
-                    <p className="text-sm font-medium mb-2">
-                      {strategyLabel(item.strategy)}
-                    </p>
-                    <DrawNumbers
-                      numbers={item.prediction.numbers}
-                      color={rules.color}
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {item.prediction.explanation}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : batch ? (
+            {batch ? (
               <div className="space-y-8">
                 {batch.map((p, i) => (
                   <div key={p.hash ?? i}>
@@ -281,9 +296,6 @@ export default function PalpitesPage() {
                       {GENERATION_MODES.find((m) => m.value === result.mode)
                         ?.label ?? result.mode}
                     </Badge>
-                  )}
-                  {result.id && (
-                    <Badge variant="success">Salvo no histórico</Badge>
                   )}
                 </div>
                 {result.explanation && (

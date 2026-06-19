@@ -9,6 +9,8 @@ import {
   Hash,
   Layers,
   Loader2,
+  PanelRightClose,
+  PanelRightOpen,
   Sparkles,
 } from "lucide-react";
 import type { GameSlug } from "@/modules/shared/constants";
@@ -39,13 +41,15 @@ import {
 import { MultiTrendChart, TrendLineChart } from "@/components/charts/trend-charts";
 import { CooccurrenceHeatmap } from "@/components/charts/heatmap-chart";
 import { DelayFrequencyScatter } from "@/components/charts/scatter-chart";
+import { LotofacilVolanteCard } from "@/components/domain/lotofacil-volante-card";
 import { DrawNumbers } from "@/components/domain/number-ball";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/input";
 import type { LotofacilFrameCoreStudy } from "@/modules/lotofacil/frame-core-study";
 import { LotofacilFrameCorePanel } from "@/components/dashboard/lotofacil-frame-core-panel";
-import { formatDate } from "@/lib/utils";
+import { SpecialNumbersPanel } from "@/components/dashboard/special-numbers-panel";
+import { formatDate, cn } from "@/lib/utils";
 import {
   GENERATION_MODES,
   GENERATION_STRATEGIES,
@@ -73,6 +77,7 @@ interface GameDashboardViewProps {
 
 export function GameDashboardView({ slug }: GameDashboardViewProps) {
   const rules = GAMES[slug];
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const { filters, draft, setDraft, apply, reset, activeCount } =
     useDashboardFilters();
   const { data: analytics, loading, error, reload } = useAnalytics(
@@ -106,14 +111,39 @@ export function GameDashboardView({ slug }: GameDashboardViewProps) {
         accent={rules.color}
         badge={`${analytics?.totalDraws.toLocaleString("pt-BR") ?? 0} concursos`}
         engineVersion={analytics?.meta?.engineVersion}
-      />
+      >
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          {filtersOpen ? (
+            <>
+              <PanelRightClose className="h-4 w-4" />
+              Ocultar filtros
+            </>
+          ) : (
+            <>
+              <PanelRightOpen className="h-4 w-4" />
+              Mostrar filtros
+            </>
+          )}
+        </Button>
+      </DashboardHeader>
 
       <InfoBlock variant="accent">
         Indicadores derivados de dados históricos. Não representam probabilidade
         oficial nem garantia de acerto em sorteios futuros.
       </InfoBlock>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
+      <div
+        className={cn(
+          "grid gap-6",
+          filtersOpen && "xl:grid-cols-[1fr_280px]"
+        )}
+      >
         <div className="space-y-8 min-w-0">
           {!hasData ? (
             <EmptyState
@@ -164,14 +194,17 @@ export function GameDashboardView({ slug }: GameDashboardViewProps) {
           <MethodologyAccordion />
         </div>
 
-        <DashboardFiltersPanel
-          draft={draft}
-          setDraft={setDraft}
-          onApply={apply}
-          onReset={reset}
-          activeCount={activeCount}
-          accent={rules.color}
-        />
+        {filtersOpen && (
+          <DashboardFiltersPanel
+            draft={draft}
+            setDraft={setDraft}
+            onApply={apply}
+            onReset={reset}
+            activeCount={activeCount}
+            accent={rules.color}
+            onCollapse={() => setFiltersOpen(false)}
+          />
+        )}
       </div>
     </div>
   );
@@ -320,6 +353,16 @@ function DistributionTab({
           />
           <RangeChart data={analytics.ranges} color={color} />
         </div>
+      </SectionShell>
+
+      <SectionShell
+        title="Primos e Fibonacci"
+        description="Ocorrência de dezenas primas e da sequência de Fibonacci no histórico"
+      >
+        <SpecialNumbersPanel
+          study={analytics.basic.specialNumbers}
+          color={color}
+        />
       </SectionShell>
 
       <SectionShell title="Relação frequência × atraso">
@@ -619,10 +662,23 @@ function PredictionsTab({
 
         {result && (
           <div className="glass rounded-xl p-6 space-y-4 mt-6">
-            <DrawNumbers
-              numbers={result.numbers as number[]}
-              color={color}
-            />
+            {slug === "lotofacil" ? (
+              <div className="flex justify-center max-w-[260px] mx-auto">
+                <LotofacilVolanteCard
+                  selectedNumbers={result.numbers as number[]}
+                  color={color}
+                  size="default"
+                  showHeader={false}
+                  showBalance={false}
+                  className="w-full"
+                />
+              </div>
+            ) : (
+              <DrawNumbers
+                numbers={result.numbers as number[]}
+                color={color}
+              />
+            )}
             <p className="text-sm text-muted-foreground">
               {String(result.explanation ?? "")}
             </p>
@@ -640,18 +696,32 @@ function PredictionsTab({
         )}
 
         {comparison && (
-          <div className="space-y-4 mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
             {comparison.map((item) => (
-              <div key={item.strategy} className="glass rounded-xl p-4">
-                <p className="text-sm font-medium mb-2">
+              <div
+                key={item.strategy}
+                className="glass rounded-xl p-3 space-y-2 flex flex-col items-center"
+              >
+                <p className="text-xs font-medium text-center w-full truncate">
                   {GENERATION_STRATEGIES.find((s) => s.value === item.strategy)
                     ?.label ?? item.strategy}
                 </p>
-                <DrawNumbers
-                  numbers={item.prediction.numbers as number[]}
-                  color={color}
-                  size="sm"
-                />
+                {slug === "lotofacil" ? (
+                  <LotofacilVolanteCard
+                    selectedNumbers={item.prediction.numbers as number[]}
+                    color={color}
+                    size="default"
+                    showHeader={false}
+                    showBalance={false}
+                    className="w-full max-w-[260px]"
+                  />
+                ) : (
+                  <DrawNumbers
+                    numbers={item.prediction.numbers as number[]}
+                    color={color}
+                    size="sm"
+                  />
+                )}
               </div>
             ))}
           </div>

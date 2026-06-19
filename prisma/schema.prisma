@@ -76,6 +76,13 @@ enum PredictionStrategy {
   HYBRID
 }
 
+enum BetCheckStatus {
+  FUTURE
+  AWAITING_DRAW
+  CHECKED
+  DRAW_NOT_FOUND
+}
+
 enum BacktestStatus {
   PENDING
   RUNNING
@@ -387,6 +394,8 @@ model LotofacilPrediction {
   filterConfig    Json?
   metadata        Json?
   notes           String?
+  betWeekStart    DateTime?          @db.Date
+  betSlot         Int                @default(1)
   createdAt       DateTime           @default(now())
 
   config      PredictionConfig? @relation(fields: [configId], references: [id])
@@ -395,6 +404,7 @@ model LotofacilPrediction {
   @@index([createdAt(sort: Desc)])
   @@index([strategy])
   @@index([analysisRunId])
+  @@index([betWeekStart])
   @@map("lotofacil_predictions")
 }
 
@@ -436,6 +446,8 @@ model MegasenaPrediction {
   filterConfig    Json?
   metadata        Json?
   notes           String?
+  betWeekStart    DateTime?          @db.Date
+  betSlot         Int                @default(1)
   createdAt       DateTime           @default(now())
 
   config      PredictionConfig? @relation(fields: [configId], references: [id])
@@ -444,6 +456,7 @@ model MegasenaPrediction {
   @@index([createdAt(sort: Desc)])
   @@index([strategy])
   @@index([analysisRunId])
+  @@index([betWeekStart])
   @@map("megasena_predictions")
 }
 
@@ -485,6 +498,8 @@ model QuinaPrediction {
   filterConfig    Json?
   metadata        Json?
   notes           String?
+  betWeekStart    DateTime?          @db.Date
+  betSlot         Int                @default(1)
   createdAt       DateTime           @default(now())
 
   config      PredictionConfig? @relation(fields: [configId], references: [id])
@@ -493,5 +508,53 @@ model QuinaPrediction {
   @@index([createdAt(sort: Desc)])
   @@index([strategy])
   @@index([analysisRunId])
+  @@index([betWeekStart])
   @@map("quina_predictions")
+}
+
+// ─── Conferência semanal de apostas ───────────────────────────
+
+model WeeklyBetCheck {
+  id             String         @id @default(cuid())
+  gameType       GameType
+  predictionId   String?
+  weekStart      DateTime       @db.Date
+  weekday        Int
+  betSlot        Int            @default(1)
+  expectedDate   DateTime       @db.Date
+  contestNumber  Int?
+  drawNumbers    Int[]          @default([])
+  matchedNumbers Int[]          @default([])
+  hits           Int?
+  prizeBand      String?
+  status         BetCheckStatus @default(AWAITING_DRAW)
+  checkedAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([gameType, weekStart, weekday, betSlot])
+  @@index([gameType, weekStart])
+  @@index([predictionId])
+  @@map("weekly_bet_checks")
+}
+
+model WeeklyConferenceReview {
+  id         String   @id @default(cuid())
+  gameType   GameType
+  weekStart  DateTime @db.Date
+  reviewedAt DateTime @default(now())
+
+  @@unique([gameType, weekStart])
+  @@map("weekly_conference_reviews")
+}
+
+model WeeklyConferenceConfig {
+  id        String   @id @default(cuid())
+  gameType  GameType
+  weekStart DateTime @db.Date
+  betCount  Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  @@unique([gameType, weekStart])
+  @@map("weekly_conference_configs")
 }

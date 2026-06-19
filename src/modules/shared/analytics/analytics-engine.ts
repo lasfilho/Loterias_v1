@@ -16,6 +16,7 @@ import {
   computeRanges,
   computeSumStatistics,
 } from "./basic/distributions";
+import { computeSpecialNumbersAnalysis } from "./basic/special-numbers";
 import {
   computeCooccurrences,
   computeCycles,
@@ -65,6 +66,7 @@ export class AnalyticsEngine {
     const sumStatistics = computeSumStatistics(filtered);
     const consecutiveRepetition = computeConsecutiveRepetition(filtered);
     const occurrenceHistogram = computeOccurrenceHistogram(frequency);
+    const specialNumbers = computeSpecialNumbersAnalysis(this.rules, filtered);
 
     const movingWindows = computeMovingWindows(this.rules, filtered);
     const multiHorizonTrends = computeMultiHorizonTrends(this.rules, filtered);
@@ -124,6 +126,7 @@ export class AnalyticsEngine {
         sumStatistics,
         consecutiveRepetition,
         occurrenceHistogram,
+        specialNumbers,
         hotNumbers: hot,
         coldNumbers: cold,
       },

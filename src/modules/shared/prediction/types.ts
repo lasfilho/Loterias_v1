@@ -20,6 +20,7 @@ export interface StrategyWeights {
   composite: number;
   hotCold: number;
   pattern: number;
+  primeFibonacci: number;
 }
 
 export interface GenerationFilter extends DrawFilter {
@@ -126,7 +127,8 @@ export const GENERATION_STRATEGIES: {
     value: "HYBRID",
     prisma: PredictionStrategy.HYBRID,
     label: "Híbrido",
-    description: "Combina frequência, atraso, tendência e padrões",
+    description:
+      "Combina frequência, atraso, score composto, tendência, paridade e primos/Fibonacci",
   },
 ];
 

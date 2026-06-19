@@ -11,10 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { LotofacilFrameCoreStudy } from "@/modules/lotofacil/frame-core-study";
-import {
-  isLotofacilFrameNumber,
-  LOTOFACIL_GRID_SIZE,
-} from "@/modules/lotofacil/volante.constants";
+import { LotofacilVolanteCard } from "@/components/domain/lotofacil-volante-card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DataTable } from "@/components/dashboard/data-table";
 import { SectionShell } from "@/components/dashboard/section-shell";
@@ -25,7 +22,6 @@ import {
   chartGridStroke,
   chartTooltipStyle,
 } from "@/components/charts/chart-shell";
-import { cn } from "@/lib/utils";
 
 interface LotofacilFrameCorePanelProps {
   study: LotofacilFrameCoreStudy;
@@ -82,7 +78,7 @@ export function LotofacilFrameCorePanel({
         </div>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          <VolanteGrid color={color} />
+          <LotofacilVolanteCard color={color} showBalance={false} />
           <SplitDistributionChart data={chartData} color={color} />
         </div>
       </SectionShell>
@@ -186,62 +182,6 @@ function InfoBanner({ study }: { study: LotofacilFrameCoreStudy }) {
       </strong>
       .
     </div>
-  );
-}
-
-function VolanteGrid({ color }: { color: string }) {
-  const cells = Array.from({ length: 25 }, (_, i) => i + 1);
-
-  return (
-    <Card className="glass">
-      <CardHeader>
-        <CardTitle className="text-base">Mapa do volante</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div
-          className="grid gap-1.5 mx-auto max-w-xs"
-          style={{
-            gridTemplateColumns: `repeat(${LOTOFACIL_GRID_SIZE}, minmax(0, 1fr))`,
-          }}
-        >
-          {cells.map((n) => {
-            const isFrame = isLotofacilFrameNumber(n);
-            return (
-              <div
-                key={n}
-                className={cn(
-                  "aspect-square rounded-md flex items-center justify-center text-xs font-bold tabular-nums border",
-                  isFrame
-                    ? "border-current"
-                    : "border-dashed border-muted-foreground/40"
-                )}
-                style={
-                  isFrame
-                    ? { color, backgroundColor: `${color}22` }
-                    : undefined
-                }
-                title={isFrame ? "Moldura" : "Centro"}
-              >
-                {String(n).padStart(2, "0")}
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap gap-4 mt-4 text-xs text-muted-foreground justify-center">
-          <span className="flex items-center gap-2">
-            <span
-              className="h-3 w-3 rounded border"
-              style={{ backgroundColor: `${color}22`, borderColor: color }}
-            />
-            Moldura (16)
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded border border-dashed border-muted-foreground/50" />
-            Centro (9)
-          </span>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 

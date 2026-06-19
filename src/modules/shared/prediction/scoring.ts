@@ -1,6 +1,7 @@
 import type { FullAnalyticsReport } from "../analytics/types";
 import type { GameRules } from "../constants";
 import { computeDiversity } from "../analytics/advanced/heuristics";
+import { specialNumbersAlignmentBonus } from "./special-numbers-heuristics";
 
 export function scoreTicket(
   rules: GameRules,
@@ -22,9 +23,17 @@ export function scoreTicket(
   const normalizedFreq = avgFreq / maxFreq;
   const diversityBonus = diversity.score * 0.2;
   const concentrationMalus = diversity.concentrationPenalty * 0.15;
+  const specialBonus = specialNumbersAlignmentBonus(numbers, report);
 
   return Math.min(
     1,
-    Math.max(0, avgComposite * 0.5 + normalizedFreq * 0.3 + diversityBonus - concentrationMalus)
+    Math.max(
+      0,
+      avgComposite * 0.5 +
+        normalizedFreq * 0.3 +
+        diversityBonus +
+        specialBonus -
+        concentrationMalus
+    )
   );
 }

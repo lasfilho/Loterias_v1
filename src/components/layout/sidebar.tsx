@@ -12,12 +12,19 @@ import {
   LineChart,
   Menu,
   FlaskConical,
+  ClipboardCheck,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { DISCLAIMER, GAMES, GAME_SLUGS } from "@/modules/shared/constants";
 import { ThemeToggle } from "./theme-toggle";
+import {
+  SidebarLayoutProvider,
+  useSidebarLayout,
+} from "./sidebar-layout-context";
 
 const mainNav = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -25,6 +32,7 @@ const mainNav = [
   { name: "Análises", href: "/analises", icon: LineChart },
   { name: "Backtest", href: "/backtest", icon: FlaskConical },
   { name: "Palpites", href: "/palpites", icon: Sparkles },
+  { name: "Conferência", href: "/conferencia", icon: ClipboardCheck },
   { name: "Histórico", href: "/historico", icon: History },
   { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];
@@ -32,6 +40,7 @@ const mainNav = [
 export function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { collapsed, toggle } = useSidebarLayout();
 
   return (
     <>
@@ -43,20 +52,31 @@ export function Sidebar() {
         {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
+      <SidebarToggleTab collapsed={collapsed} onToggle={toggle} />
+
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-card/95 backdrop-blur-xl transition-transform lg:translate-x-0 flex flex-col",
-          open ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-card/95 backdrop-blur-xl transition-transform duration-200 flex flex-col",
+          open ? "translate-x-0" : "-translate-x-full",
+          collapsed ? "lg:-translate-x-full" : "lg:translate-x-0"
         )}
       >
         <div className="p-5 border-b border-border">
-          <Link href="/dashboard" className="flex items-center gap-3" onClick={() => setOpen(false)}>
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-sm">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 min-w-0"
+            onClick={() => setOpen(false)}
+          >
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-sm shrink-0">
               <BarChart3 className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <p className="font-semibold text-sm tracking-tight">Loteria Analytics</p>
-              <p className="text-[11px] text-muted-foreground">Plataforma analítica</p>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm tracking-tight truncate">
+                Loteria Analytics
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Plataforma analítica
+              </p>
             </div>
           </Link>
         </div>
@@ -147,6 +167,38 @@ export function Sidebar() {
   );
 }
 
+function SidebarToggleTab({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={cn(
+        "fixed top-1/2 z-50 hidden lg:flex -translate-y-1/2 flex",
+        "h-14 w-5 items-center justify-center",
+        "bg-card/95 backdrop-blur-sm border border-border",
+        "rounded-r-md shadow-md",
+        "text-muted-foreground hover:text-foreground hover:bg-accent",
+        "transition-[left,background-color,color] duration-200",
+        collapsed ? "left-0 border-l-0" : "left-64 border-l"
+      )}
+      aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+      title={collapsed ? "Expandir menu" : "Recolher menu"}
+    >
+      {collapsed ? (
+        <ChevronRight className="h-4 w-4" />
+      ) : (
+        <ChevronLeft className="h-4 w-4" />
+      )}
+    </button>
+  );
+}
+
 function NavItem({
   item,
   active,
@@ -175,9 +227,24 @@ function NavItem({
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
+    <SidebarLayoutProvider>
+      <DashboardShellInner>{children}</DashboardShellInner>
+    </SidebarLayoutProvider>
+  );
+}
+
+function DashboardShellInner({ children }: { children: React.ReactNode }) {
+  const { collapsed } = useSidebarLayout();
+
+  return (
     <div className="min-h-screen gradient-mesh">
       <Sidebar />
-      <main className="lg:pl-64">
+      <main
+        className={cn(
+          "transition-[padding] duration-200",
+          collapsed ? "lg:pl-0" : "lg:pl-64"
+        )}
+      >
         <div className="p-4 pt-16 lg:p-8 lg:pt-8 max-w-[1600px] mx-auto">
           {children}
         </div>

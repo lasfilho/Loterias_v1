@@ -119,6 +119,35 @@ export interface SequencePatternStat {
   percentage: number;
 }
 
+export interface PerDrawCategoryDistribution {
+  count: number;
+  occurrences: number;
+  percentage: number;
+}
+
+export interface SpecialNumberCategoryStudy {
+  label: string;
+  numbersInUniverse: number[];
+  universeCount: number;
+  aggregate: { count: number; percentage: number };
+  complementary: { label: string; count: number; percentage: number };
+  meanPerDraw: number;
+  theoreticalMeanPerDraw: number;
+  perDrawDistribution: PerDrawCategoryDistribution[];
+  dominantCountPerDraw: { count: number; percentage: number };
+  frequencyByNumber: Array<{
+    number: number;
+    count: number;
+    percentage: number;
+  }>;
+}
+
+export interface SpecialNumbersAnalysis {
+  primes: SpecialNumberCategoryStudy;
+  fibonacci: SpecialNumberCategoryStudy;
+  definition: string;
+}
+
 export interface FrameCoreStat {
   frame: { count: number; percentage: number };
   core: { count: number; percentage: number };
@@ -208,6 +237,7 @@ export interface BasicAnalytics {
   sumStatistics: SumStatistics;
   consecutiveRepetition: ConsecutiveRepetitionStat;
   occurrenceHistogram: HistogramBucket[];
+  specialNumbers: SpecialNumbersAnalysis;
   hotNumbers: number[];
   coldNumbers: number[];
 }

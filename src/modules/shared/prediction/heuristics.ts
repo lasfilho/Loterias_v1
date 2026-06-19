@@ -1,6 +1,7 @@
 import { type GameRules } from "../constants";
 import type { FullAnalyticsReport } from "../analytics/types";
 import { getAllNumbers, validateDraw } from "../repository/base-repository";
+import { specialNumbersAlignmentPenalty } from "./special-numbers-heuristics";
 
 export interface HeuristicValidation {
   valid: boolean;
@@ -61,6 +62,12 @@ export function validateCombination(
   if (diversity.concentrationPenalty > 0.35) {
     reasons.push("Alta penalidade de concentração no score de diversidade");
     penalties += diversity.concentrationPenalty * 0.3;
+  }
+
+  const special = specialNumbersAlignmentPenalty(numbers, report);
+  if (special.reasons.length > 0) {
+    reasons.push(...special.reasons);
+    penalties += special.penalty;
   }
 
   const valid = penalties < 0.5;
