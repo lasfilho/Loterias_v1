@@ -121,14 +121,14 @@ export const GENERATION_STRATEGIES: {
     value: "PATTERN_AWARE",
     prisma: PredictionStrategy.PATTERN_AWARE,
     label: "Padrões (par/ímpar e faixas)",
-    description: "Respeita paridade e distribuição por faixas",
+    description: "Respeita paridade, faixas e equilíbrio por quadrantes (Mega/Quina)",
   },
   {
     value: "HYBRID",
     prisma: PredictionStrategy.HYBRID,
     label: "Híbrido",
     description:
-      "Combina frequência, atraso, score composto, tendência, paridade e primos/Fibonacci",
+      "Combina frequência, atraso, score composto, tendência, paridade, primos/Fibonacci e quadrantes",
   },
 ];
 

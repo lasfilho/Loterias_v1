@@ -2,6 +2,7 @@ import { type GameRules } from "../constants";
 import type { FullAnalyticsReport } from "../analytics/types";
 import { getAllNumbers, validateDraw } from "../repository/base-repository";
 import { specialNumbersAlignmentPenalty } from "./special-numbers-heuristics";
+import { validateQuadrantCombination } from "./quadrant-prediction.heuristics";
 
 export interface HeuristicValidation {
   valid: boolean;
@@ -68,6 +69,12 @@ export function validateCombination(
   if (special.reasons.length > 0) {
     reasons.push(...special.reasons);
     penalties += special.penalty;
+  }
+
+  const quadrant = validateQuadrantCombination(rules, numbers, report);
+  if (quadrant.reasons.length > 0) {
+    reasons.push(...quadrant.reasons);
+    penalties += quadrant.penalty;
   }
 
   const valid = penalties < 0.5;

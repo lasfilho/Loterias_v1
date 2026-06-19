@@ -1,4 +1,6 @@
 import type { GameAnalyticsExtension } from "../shared/analytics/types";
+import { computeQuadrantStudyForLayout } from "../shared/analytics/quadrant-study";
+import { MEGASENA_VOLANTE } from "../shared/analytics/quadrant-volante";
 import { computeLinearFrameCore } from "../shared/analytics/intermediate/patterns";
 
 export const megasenaAnalyticsExtension: GameAnalyticsExtension = {
@@ -20,6 +22,7 @@ export const megasenaAnalyticsExtension: GameAnalyticsExtension = {
     return {
       decileDistribution: deciles,
       frameCore: this.getFrameCore?.(draws, rules),
+      quadrantStudy: computeQuadrantStudyForLayout(draws, MEGASENA_VOLANTE),
     };
   },
 

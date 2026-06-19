@@ -18,6 +18,7 @@ import {
   countDifferent,
   validateCombination,
 } from "./heuristics";
+import { nudgeQuadrantBalance } from "./quadrant-prediction.heuristics";
 import { scoreTicket } from "./scoring";
 import {
   buildStrategyContext,
@@ -27,6 +28,7 @@ import {
 import { buildExplanation } from "./explain";
 import { createPredictionHash, createSeededRng } from "./utils";
 import { formatSpecialNumbersSummary } from "./special-numbers-heuristics";
+import { describeQuadrantCombination } from "./quadrant-prediction.heuristics";
 import type { DrawFilter } from "../types";
 
 const MAX_REGENERATION_ATTEMPTS = 12;
@@ -156,6 +158,16 @@ export class PredictionGenerator {
         rng
       );
 
+      numbers = nudgeQuadrantBalance(
+        numbers,
+        this.rules,
+        report,
+        ctx.pool,
+        pickCount,
+        exclude,
+        include
+      );
+
       validation = validateCombination(this.rules, numbers, report);
       attempts++;
     }
@@ -212,6 +224,7 @@ export class PredictionGenerator {
           summary: formatSpecialNumbersSummary(numbers, report),
         },
         validation: validation.reasons,
+        quadrantRules: describeQuadrantCombination(numbers, report),
         engineVersion: report.meta.engineVersion,
         generatedAt: timestamp,
       },

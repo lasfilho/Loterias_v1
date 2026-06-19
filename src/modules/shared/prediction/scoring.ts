@@ -2,6 +2,7 @@ import type { FullAnalyticsReport } from "../analytics/types";
 import type { GameRules } from "../constants";
 import { computeDiversity } from "../analytics/advanced/heuristics";
 import { specialNumbersAlignmentBonus } from "./special-numbers-heuristics";
+import { quadrantBalanceBonus } from "./quadrant-prediction.heuristics";
 
 export function scoreTicket(
   rules: GameRules,
@@ -24,6 +25,7 @@ export function scoreTicket(
   const diversityBonus = diversity.score * 0.2;
   const concentrationMalus = diversity.concentrationPenalty * 0.15;
   const specialBonus = specialNumbersAlignmentBonus(numbers, report);
+  const quadrantBonus = quadrantBalanceBonus(numbers, report);
 
   return Math.min(
     1,
@@ -32,7 +34,8 @@ export function scoreTicket(
       avgComposite * 0.5 +
         normalizedFreq * 0.3 +
         diversityBonus +
-        specialBonus -
+        specialBonus +
+        quadrantBonus -
         concentrationMalus
     )
   );

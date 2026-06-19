@@ -1,4 +1,6 @@
 import type { GameAnalyticsExtension } from "../shared/analytics/types";
+import { computeQuadrantStudyForLayout } from "../shared/analytics/quadrant-study";
+import { QUINA_VOLANTE } from "../shared/analytics/quadrant-volante";
 import { computeLinearFrameCore } from "../shared/analytics/intermediate/patterns";
 
 export const quinaAnalyticsExtension: GameAnalyticsExtension = {
@@ -20,6 +22,7 @@ export const quinaAnalyticsExtension: GameAnalyticsExtension = {
     return {
       octetDistribution: octets,
       frameCore: this.getFrameCore?.(draws, rules),
+      quadrantStudy: computeQuadrantStudyForLayout(draws, QUINA_VOLANTE),
     };
   },
 
